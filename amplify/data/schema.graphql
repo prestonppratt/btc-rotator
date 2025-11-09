@@ -1,0 +1,30 @@
+type Ticker @model @auth(rules: [{allow: public, operations: [read]}, {allow: private, operations: [create, update, delete]}]) {
+  id: ID!
+  symbol: String!
+  name: String!
+  price: Float
+  change24h: Float
+  changePercent24h: Float
+  volume: Float
+  marketCap: Float
+  lastUpdated: AWSTimestamp
+}
+
+type UserRotation @model @auth(rules: [{allow: owner}, {allow: public, operations: [read]}]) {
+  id: ID!
+  userId: String!
+  tickerSymbol: String!
+  rotationOrder: Int!
+  createdAt: AWSTimestamp
+  updatedAt: AWSTimestamp
+}
+
+type RotationHistory @model @auth(rules: [{allow: owner}, {allow: public, operations: [read]}]) {
+  id: ID!
+  userId: String!
+  fromTicker: String!
+  toTicker: String!
+  timestamp: AWSTimestamp!
+  reason: String
+}
+
