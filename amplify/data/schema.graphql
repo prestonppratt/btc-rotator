@@ -28,3 +28,26 @@ type RotationHistory @model @auth(rules: [{allow: owner}, {allow: public, operat
   reason: String
 }
 
+type User @model @auth(rules: [{allow: owner}]) {
+  id: ID!
+  email: String!
+  phone: String
+  isPaid: Boolean! @default(value: "false")
+  signupDate: AWSDateTime!
+  notificationFreq: String! # "daily" | "weekly" | "biweekly" | "monthly" | "off"
+  portfolio: [Holding]
+  tradeHistory: [Trade]
+}
+
+type Holding {
+  ticker: String!
+  shares: Float!
+}
+
+type Trade {
+  date: AWSDateTime!
+  sellTicker: String!
+  buyTicker: String!
+  reason: String!
+}
+

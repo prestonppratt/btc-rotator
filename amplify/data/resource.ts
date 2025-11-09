@@ -1,5 +1,17 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 
+const Holding = a.customType({
+  ticker: a.string().required(),
+  shares: a.float().required(),
+});
+
+const Trade = a.customType({
+  date: a.datetime().required(),
+  sellTicker: a.string().required(),
+  buyTicker: a.string().required(),
+  reason: a.string().required(),
+});
+
 const schema = a.schema({
   Ticker: a
     .model({
@@ -39,6 +51,18 @@ const schema = a.schema({
       allow.owner().identityClaim('sub'),
       allow.publicApiKey().to(['read']),
     ]),
+
+  User: a
+    .model({
+      email: a.string().required(),
+      phone: a.string(),
+      isPaid: a.boolean().default(false),
+      signupDate: a.datetime().required(),
+      notificationFreq: a.string().required(),
+      portfolio: a.json(),
+      tradeHistory: a.json(),
+    })
+    .authorization((allow) => [allow.owner().identityClaim('sub')]),
 });
 
 export type Schema = ClientSchema<typeof schema>;

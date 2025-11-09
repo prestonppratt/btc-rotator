@@ -17,11 +17,15 @@
     "@tanstack/react-query": "^5.0.0",
     "axios": "^1.6.0",
     "graphql": "^16.8.0",
-    "graphql-tag": "^2.12.6"
+    "graphql-tag": "^2.12.6",
+    "canvas-confetti": "^1.9.2",
+    "recharts": "^2.10.3",
+    "react-router-dom": "^6.20.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/canvas-confetti": "^1.6.4",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
     "@vitejs/plugin-react": "^4.2.0",
