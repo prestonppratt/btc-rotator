@@ -1,6 +1,6 @@
 # BTC Rotator – Automated Bitcoin Alpha
 
-A full-stack serverless web application for automated Bitcoin ticker rotation strategy. Built with AWS Amplify Gen 2, React 19, TypeScript, and Python 3.12.
+A full-stack serverless web application for automated Bitcoin ticker rotation strategy. Built with AWS Amplify Gen 2, React 18, TypeScript, and Python 3.12.
 
 ## 🚀 Quick Start
 
@@ -34,7 +34,34 @@ btc-rotator/
     └── favicon.svg                # Bitcoin logo favicon
 ```
 
-## 🔧 Deployment Guide
+## 🚀 How to Deploy to AWS Amplify in 2 Clicks
+
+### Quick Deploy (Recommended)
+
+1. **Go to AWS Amplify Console**
+   - Navigate to: https://console.aws.amazon.com/amplify/
+   - Click "New app" → "Host web app"
+
+2. **Connect & Deploy**
+   - Select "GitHub" as source
+   - Authorize AWS Amplify
+   - Select repository: `prestonppratt/btc-rotator`
+   - Select branch: `main`
+   - Click "Save and deploy"
+
+**That's it!** Amplify will:
+- Auto-detect `amplify.yml` build configuration
+- Install dependencies (Node 18)
+- Build frontend (Vite)
+- Deploy backend (Cognito, AppSync, DynamoDB, Lambda)
+- Generate `amplify_outputs.json` automatically
+- Deploy to production URL
+
+**Your app will be live in ~10-15 minutes!**
+
+---
+
+## 🔧 Detailed Deployment Guide
 
 ### 1. Connect GitHub to AWS Amplify
 

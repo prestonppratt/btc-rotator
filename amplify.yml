@@ -3,6 +3,9 @@ frontend:
   phases:
     preBuild:
       commands:
+        - nvm use 18
+        - node --version
+        - npm --version
         - npm ci
     build:
       commands:
@@ -18,12 +21,5 @@ backend:
   phases:
     build:
       commands:
-        - '# Install Python 3.12'
-        - pyenv install -s 3.12.0 || true
-        - pyenv global 3.12.0 || true
-        - python3.12 --version || python3 --version
-        - '# Install Amplify CLI'
-        - npm install -g @aws-amplify/cli
-        - '# Deploy backend'
+        - '# Deploy backend with Amplify Gen 2'
         - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
-
