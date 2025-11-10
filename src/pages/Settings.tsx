@@ -1,25 +1,68 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { generateClient } from 'aws-amplify/data';
+import { getCurrentUser } from 'aws-amplify/auth';
+import type { Schema } from '../../amplify/data/resource';
 import LoadingSpinner from '../components/LoadingSpinner';
+
+const client = generateClient<Schema>();
 
 type NotificationFreq = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'off';
 
-// Frontend-only MVP - backend will be added later
 function Settings() {
   const [notificationFreq, setNotificationFreq] = useState<NotificationFreq>('weekly');
-  const [phone, setPhone] = useState<string>(''); // User can input phone number
+  const [phone, setPhone] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const user = await getCurrentUser();
+        const userData = await client.models.User.get({ id: user.userId });
+        
+        if (userData.data) {
+          setNotificationFreq((userData.data.notificationFreq as NotificationFreq) || 'weekly');
+          setPhone(userData.data.phone || '');
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadSettings();
+  }, []);
 
   const handleSave = async () => {
     setIsSaving(true);
     setMessage(null);
     
-    // Stub for MVP - backend will be added later
-    setTimeout(() => {
+    try {
+      const user = await getCurrentUser();
+      await client.models.User.update({
+        id: user.userId,
+        notificationFreq: notificationFreq,
+        phone: phone || undefined,
+      });
+      
+      setMessage({ type: 'success', text: 'Settings saved successfully!' });
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      setMessage({ type: 'error', text: 'Failed to save settings. Please try again.' });
+    } finally {
       setIsSaving(false);
-      setMessage({ type: 'success', text: 'Settings saved! (Backend coming soon)' });
-    }, 500);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-black text-white p-4 pb-20 flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black text-white p-4 pb-20">
@@ -51,7 +94,7 @@ function Settings() {
               placeholder="+1 (555) 123-4567"
               className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded text-white focus:outline-none focus:border-neon-green"
             />
-            <p className="text-xs text-gray-500 mt-1">Enter your phone number for SMS notifications (SMS requires AWS SNS setup)</p>
+            <p className="text-xs text-gray-500 mt-1">Enter your phone number for SMS notifications (format: +1234567890). SMS requires AWS SNS to be configured.</p>
           </div>
 
           <button
