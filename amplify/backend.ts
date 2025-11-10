@@ -1,60 +1,67 @@
 import { defineBackend } from '@aws-amplify/backend';
 import { auth } from './auth/resource';
 import { data } from './data/resource';
-import { postConfirmation } from './functions/postConfirmation/resource';
-import { rotator } from './functions/rotator/resource';
+import { Function, Runtime, Code } from 'aws-cdk-lib/aws-lambda';
+import { Duration } from 'aws-cdk-lib';
+import * as path from 'path';
 
 const backend = defineBackend({
   auth,
   data,
-  postConfirmation,
-  rotator,
 });
 
-// Grant the postConfirmation function permissions to write to the User table
+// Create Python Lambda functions using CDK directly
 const { resources } = backend;
-resources.postConfirmation.addToRolePolicy({
-  effect: 'Allow',
-  actions: ['dynamodb:PutItem'],
-  resources: [resources.data.tables['User'].tableArn],
-});
 
-// Set environment variable for the table name
-resources.postConfirmation.addEnvironment(
+// Post-confirmation Python function
+const postConfirmationFunction = new Function(
+  backend.stack,
+  'PostConfirmationFunction',
+  {
+    runtime: Runtime.PYTHON_3_12,
+    handler: 'handler.handler',
+    code: Code.fromAsset(path.join(__dirname, 'functions/postConfirmation')),
+  }
+);
+
+// Set environment variable
+postConfirmationFunction.addEnvironment(
   'USER_TABLE_NAME',
   resources.data.tables['User'].tableName
 );
+
+// Grant DynamoDB permissions
+resources.data.tables['User'].grantWriteData(postConfirmationFunction);
 
 // Configure the post-confirmation trigger
 resources.auth.resources.userPool.addLambdaTrigger(
   'PostConfirmation',
-  resources.postConfirmation
+  postConfirmationFunction
 );
 
-// Grant rotator function permissions to read/write User table
-resources.rotator.addToRolePolicy({
-  effect: 'Allow',
-  actions: ['dynamodb:GetItem', 'dynamodb:UpdateItem', 'dynamodb:Scan', 'dynamodb:Query'],
-  resources: [resources.data.tables['User'].tableArn],
-});
+// Rotator Python function
+const rotatorFunction = new Function(
+  backend.stack,
+  'RotatorFunction',
+  {
+    runtime: Runtime.PYTHON_3_12,
+    handler: 'handler.handler',
+    code: Code.fromAsset(path.join(__dirname, 'functions/rotator')),
+    timeout: Duration.seconds(300),
+  }
+);
 
-// Set environment variable for the table name
-resources.rotator.addEnvironment(
+// Set environment variable
+rotatorFunction.addEnvironment(
   'USER_TABLE_NAME',
   resources.data.tables['User'].tableName
 );
 
-// Grant rotator function permissions for SNS (SMS)
-resources.rotator.addToRolePolicy({
+// Grant permissions
+resources.data.tables['User'].grantReadWriteData(rotatorFunction);
+rotatorFunction.addToRolePolicy({
   effect: 'Allow',
-  actions: ['sns:Publish'],
-  resources: ['*'],
-});
-
-// Grant rotator function permissions for SES (Email)
-resources.rotator.addToRolePolicy({
-  effect: 'Allow',
-  actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+  actions: ['sns:Publish', 'ses:SendEmail', 'ses:SendRawEmail'],
   resources: ['*'],
 });
 
