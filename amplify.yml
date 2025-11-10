@@ -10,8 +10,8 @@ frontend:
         - npm ci
     build:
       commands:
-        - npm run build
-        - ls -la dist/
+        - npm run build 2>&1
+        - ls -la dist/ || echo "dist/ directory not found"
         - test -f dist/index.html || (echo "ERROR: index.html not found in dist/" && exit 1)
   artifacts:
     baseDirectory: dist
