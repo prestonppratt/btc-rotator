@@ -35,6 +35,8 @@ function Dashboard() {
         shouldRotate: rotationData.shouldRotate || false,
         currentPosition: rotationData.currentPosition || null,
         newTopTicker: rotationData.newTopTicker || 'N/A',
+        newTopScore: rotationData.newTopScore || 0,
+        scoreGap: rotationData.scoreGap || 0,
         message: rotationData.message || 'HOLD – no new signal',
         expectedAlpha: rotationData.expectedAlpha || 0,
       };
@@ -70,7 +72,7 @@ function Dashboard() {
       return Math.random() * (max - min) + min;
     }
 
-    const interval: NodeJS.Timeout = setInterval(function() {
+    const interval = setInterval(function() {
       const timeLeft = animationEnd - Date.now();
 
       if (timeLeft <= 0) {
