@@ -22,7 +22,7 @@ backend:
       commands:
         - nvm install 18
         - nvm use 18
-        - npm install -g @aws-amplify/backend-cli@latest
+        - npm install -g @aws-amplify/backend-cli@latest --force
     build:
       commands:
         - '# Deploy backend with Amplify Gen 2'
