@@ -26,4 +26,4 @@ backend:
     build:
       commands:
         - '# Deploy backend with Amplify Gen 2'
-        - npx @aws-amplify/backend-cli pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
