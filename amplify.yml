@@ -5,18 +5,10 @@ frontend:
       commands:
         - nvm install 18
         - nvm use 18
-        - node --version
-        - npm --version
         - npm ci
     build:
       commands:
         - npm run build
-        - ls -la dist/
-        - |
-          if [ ! -f dist/index.html ]; then
-            echo "ERROR: index.html not found in dist/"
-            exit 1
-          fi
   artifacts:
     baseDirectory: dist
     files:
