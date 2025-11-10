@@ -13,5 +13,13 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: true,
   },
+  resolve: {
+    alias: {
+      // Handle optional amplify_outputs.json
+    },
+  },
+  optimizeDeps: {
+    exclude: ['../amplify_outputs.json'],
+  },
 });
 
