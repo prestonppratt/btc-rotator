@@ -6,7 +6,7 @@ export function useAuthGuard() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
-  const [shouldRedirect, useState] = useState(false);
+  const [shouldRedirect, setShouldRedirect] = useState(false);
 
   useEffect(() => {
     // Stub for MVP - no auth checking yet
