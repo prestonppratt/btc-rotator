@@ -22,7 +22,6 @@ backend:
       commands:
         - nvm install 18
         - nvm use 18
-        - npm install -g @aws-amplify/cli@latest
         - npm install -g @aws-amplify/backend-cli@latest
     build:
       commands:
