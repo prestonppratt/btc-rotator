@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
-// Frontend-only MVP - auth will be added later
+import { Authenticator } from '@aws-amplify/ui-react';
+import '@aws-amplify/ui-react/styles.css';
 import Dashboard from './components/Dashboard';
 import Portfolio from './pages/Portfolio';
 import Settings from './pages/Settings';
@@ -127,8 +128,7 @@ function Navigation() {
   );
 }
 
-function App() {
-
+function AppContent() {
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-black text-white flex flex-col">
@@ -150,6 +150,28 @@ function App() {
         <Footer />
       </div>
     </BrowserRouter>
+  );
+}
+
+function App() {
+  return (
+    <Authenticator
+      loginMechanisms={['email', 'phone_number']}
+      signUpAttributes={['email', 'phone_number']}
+      components={{
+        Header() {
+          return (
+            <div className="text-right mb-4">
+              <p className="text-xs text-gray-500">
+                Entertainment only • Not advice • At your own risk
+              </p>
+            </div>
+          );
+        },
+      }}
+    >
+      <AppContent />
+    </Authenticator>
   );
 }
 
