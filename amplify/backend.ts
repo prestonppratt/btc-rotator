@@ -3,6 +3,7 @@ import { auth } from './auth/resource';
 import { data } from './data/resource';
 import { Function, Runtime, Code } from 'aws-cdk-lib/aws-lambda';
 import { Duration } from 'aws-cdk-lib';
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import * as path from 'path';
 
 const backend = defineBackend({
@@ -59,9 +60,10 @@ rotatorFunction.addEnvironment(
 
 // Grant permissions
 resources.data.tables['User'].grantReadWriteData(rotatorFunction);
-rotatorFunction.addToRolePolicy({
-  effect: 'Allow',
-  actions: ['sns:Publish', 'ses:SendEmail', 'ses:SendRawEmail'],
-  resources: ['*'],
-});
+rotatorFunction.addToRolePolicy(
+  new PolicyStatement({
+    actions: ['sns:Publish', 'ses:SendEmail', 'ses:SendRawEmail'],
+    resources: ['*'],
+  })
+);
 
