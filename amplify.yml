@@ -3,6 +3,7 @@ frontend:
   phases:
     preBuild:
       commands:
+        - nvm install 18
         - nvm use 18
         - npm ci
     build:
@@ -15,9 +16,3 @@ frontend:
   cache:
     paths:
       - node_modules/**/*
-backend:
-  phases:
-    build:
-      commands:
-        - '# Deploy backend with Amplify Gen 2'
-        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
