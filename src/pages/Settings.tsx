@@ -6,7 +6,7 @@ type NotificationFreq = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'off';
 // Frontend-only MVP - backend will be added later
 function Settings() {
   const [notificationFreq, setNotificationFreq] = useState<NotificationFreq>('weekly');
-  const [phone, setPhone] = useState<string>('+1 (555) 000-0000'); // Stub
+  const [phone, setPhone] = useState<string>(''); // User can input phone number
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -45,12 +45,13 @@ function Settings() {
           <div>
             <label className="block text-sm font-medium mb-2">Phone Number</label>
             <input
-              type="text"
+              type="tel"
               value={phone}
-              readOnly
-              className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded text-gray-400 cursor-not-allowed"
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+1 (555) 123-4567"
+              className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded text-white focus:outline-none focus:border-neon-green"
             />
-            <p className="text-xs text-gray-500 mt-1">Phone number is read-only</p>
+            <p className="text-xs text-gray-500 mt-1">Enter your phone number for SMS notifications (SMS requires AWS SNS setup)</p>
           </div>
 
           <button
