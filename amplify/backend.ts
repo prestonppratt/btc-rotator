@@ -30,14 +30,19 @@ const postConfirmationFunction = new Function(
   }
 );
 
-// Set environment variable
+// Set environment variable - access data resources correctly
+// In Amplify Gen 2, data resources are accessed through resources.data.resources
+const userTable = resources.data.resources.tables['User'];
+if (!userTable) {
+  throw new Error('User table not found in data resources');
+}
 postConfirmationFunction.addEnvironment(
   'USER_TABLE_NAME',
-  resources.data.tables['User'].tableName
+  userTable.tableName
 );
 
 // Grant DynamoDB permissions
-resources.data.tables['User'].grantWriteData(postConfirmationFunction);
+userTable.grantWriteData(postConfirmationFunction);
 
 // Configure the post-confirmation trigger
 resources.auth.resources.userPool.addLambdaTrigger(
@@ -57,14 +62,14 @@ const rotatorFunction = new Function(
   }
 );
 
-// Set environment variable
+// Set environment variable - access data resources correctly
 rotatorFunction.addEnvironment(
   'USER_TABLE_NAME',
-  resources.data.tables['User'].tableName
+  userTable.tableName
 );
 
 // Grant permissions
-resources.data.tables['User'].grantReadWriteData(rotatorFunction);
+userTable.grantReadWriteData(rotatorFunction);
 rotatorFunction.addToRolePolicy(
   new PolicyStatement({
     actions: ['sns:Publish', 'ses:SendEmail', 'ses:SendRawEmail'],
