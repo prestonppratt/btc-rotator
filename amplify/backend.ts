@@ -31,11 +31,8 @@ const postConfirmationFunction = new Function(
 );
 
 // Set environment variable - access data resources correctly
-// In Amplify Gen 2, data resources are accessed through resources.data.resources
-const userTable = resources.data.resources.tables['User'];
-if (!userTable) {
-  throw new Error('User table not found in data resources');
-}
+// In Amplify Gen 2, access data resources through backend.resources
+const userTable = backend.resources.data.resources.tables['User'];
 postConfirmationFunction.addEnvironment(
   'USER_TABLE_NAME',
   userTable.tableName
@@ -63,13 +60,14 @@ const rotatorFunction = new Function(
 );
 
 // Set environment variable - access data resources correctly
+const rotatorUserTable = backend.resources.data.resources.tables['User'];
 rotatorFunction.addEnvironment(
   'USER_TABLE_NAME',
-  userTable.tableName
+  rotatorUserTable.tableName
 );
 
 // Grant permissions
-userTable.grantReadWriteData(rotatorFunction);
+rotatorUserTable.grantReadWriteData(rotatorFunction);
 rotatorFunction.addToRolePolicy(
   new PolicyStatement({
     actions: ['sns:Publish', 'ses:SendEmail', 'ses:SendRawEmail'],
