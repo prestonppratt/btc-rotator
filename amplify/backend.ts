@@ -14,8 +14,6 @@ const backend = defineBackend({
   auth,
 });
 
-const { resources } = backend;
-
 // Email OTP Lambda function for DefineAuthChallenge
 const defineAuthChallengeFunction = new Function(
   backend.stack,
@@ -53,9 +51,10 @@ const verifyAuthChallengeFunction = new Function(
 );
 
 // Attach Lambda triggers to Cognito User Pool
-resources.auth.resources.userPool.addLambdaTrigger('DefineAuthChallenge', defineAuthChallengeFunction);
-resources.auth.resources.userPool.addLambdaTrigger('CreateAuthChallenge', createAuthChallengeFunction);
-resources.auth.resources.userPool.addLambdaTrigger('VerifyAuthChallengeResponse', verifyAuthChallengeFunction);
+// Access auth resources through backend.resources
+backend.resources.auth.resources.userPool.addLambdaTrigger('DefineAuthChallenge', defineAuthChallengeFunction);
+backend.resources.auth.resources.userPool.addLambdaTrigger('CreateAuthChallenge', createAuthChallengeFunction);
+backend.resources.auth.resources.userPool.addLambdaTrigger('VerifyAuthChallengeResponse', verifyAuthChallengeFunction);
 
 // Grant SES permissions to send emails
 createAuthChallengeFunction.addToRolePolicy(
