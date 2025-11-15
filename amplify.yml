@@ -16,16 +16,14 @@ frontend:
   cache:
     paths:
       - node_modules/**/*
-# Backend deployment temporarily disabled due to IAM permissions issue
-# The CodeBuild role needs SSM GetParameter permission for CDK bootstrap
-# backend:
-#   phases:
-#     preBuild:
-#       commands:
-#         - nvm install 18
-#         - nvm use 18
-#         - npm ci
-#     build:
-#       commands:
-#         - '# Deploy backend with Amplify Gen 2'
-#         - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+backend:
+  phases:
+    preBuild:
+      commands:
+        - nvm install 18
+        - nvm use 18
+        - npm ci
+    build:
+      commands:
+        - '# Deploy backend with Amplify Gen 2'
+        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
