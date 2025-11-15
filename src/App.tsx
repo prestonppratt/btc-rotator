@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
 import { Authenticator } from '@aws-amplify/ui-react';
+import { signOut } from 'aws-amplify/auth';
 import '@aws-amplify/ui-react/styles.css';
 import Dashboard from './components/Dashboard';
 import Portfolio from './pages/Portfolio';
@@ -88,8 +89,22 @@ function Navigation() {
                 Settings
               </button>
             </nav>
-            <div className="hidden md:block text-xs text-gray-500">
-              Entertainment only • Not advice • At your own risk
+            <div className="hidden md:flex items-center space-x-4">
+              <button
+                onClick={async () => {
+                  try {
+                    await signOut();
+                  } catch (error) {
+                    console.error('Error signing out:', error);
+                  }
+                }}
+                className="px-3 py-2 text-sm text-gray-400 hover:text-neon-green transition-colors"
+              >
+                Sign Out
+              </button>
+              <div className="text-xs text-gray-500">
+                Entertainment only • Not advice • At your own risk
+              </div>
             </div>
           </div>
         </div>
@@ -121,6 +136,18 @@ function Navigation() {
             }`}
           >
             Settings
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                await signOut();
+              } catch (error) {
+                console.error('Error signing out:', error);
+              }
+            }}
+            className="flex-1 h-full flex items-center justify-center text-gray-400 hover:text-neon-green"
+          >
+            Sign Out
           </button>
         </div>
       </nav>
