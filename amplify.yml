@@ -5,7 +5,7 @@ frontend:
       commands:
         - nvm install 18
         - nvm use 18
-        - npm install
+        - npm ci
     build:
       commands:
         - npm run build
@@ -22,7 +22,7 @@ backend:
       commands:
         - nvm install 18
         - nvm use 18
-        - npm install
+        - npm ci
     build:
       commands:
         - '# Deploy backend with Amplify Gen 2'
