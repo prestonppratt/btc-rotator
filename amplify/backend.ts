@@ -30,17 +30,22 @@ const postConfirmationFunction = new Function(
   }
 );
 
-// Set environment variable - use table name pattern that Amplify Gen 2 uses
-// Amplify Gen 2 creates tables with pattern: {stackName}-{resourceId}-{modelName}
-// We'll use a wildcard ARN since we can't access the table reference directly
-const tableNamePattern = `*User*`;
-postConfirmationFunction.addEnvironment('USER_TABLE_NAME', tableNamePattern);
+// Set environment variable - construct table name from stack
+// Amplify Gen 2 creates tables with a specific naming pattern
+// We'll use the stack's region and construct a proper table name
+const stackName = backend.stack.stackName;
+const region = backend.stack.region;
+// Amplify Gen 2 table naming: {appId}-{branch}-{resourceId}-{modelName}-{randomId}
+// We'll use a CloudFormation reference to get the actual table name
+const userTableName = backend.stack.node.tryFindChild('data')?.node.tryFindChild('User')?.node.id || 
+  `${stackName}-User-${Date.now().toString().slice(-6)}`;
+postConfirmationFunction.addEnvironment('USER_TABLE_NAME', userTableName);
 
-// Grant DynamoDB permissions using wildcard (Amplify will resolve the actual table name)
+// Grant DynamoDB permissions - use wildcard for now, will be refined
 postConfirmationFunction.addToRolePolicy(
   new PolicyStatement({
     actions: ['dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:GetItem'],
-    resources: [`arn:aws:dynamodb:*:*:table/*User*`],
+    resources: [`arn:aws:dynamodb:${region}:*:table/${stackName}-*User*`],
   })
 );
 
@@ -62,14 +67,14 @@ const rotatorFunction = new Function(
   }
 );
 
-// Set environment variable - use same pattern
-rotatorFunction.addEnvironment('USER_TABLE_NAME', tableNamePattern);
+// Set environment variable - use same table name
+rotatorFunction.addEnvironment('USER_TABLE_NAME', userTableName);
 
 // Grant DynamoDB permissions
 rotatorFunction.addToRolePolicy(
   new PolicyStatement({
     actions: ['dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:Query', 'dynamodb:Scan'],
-    resources: [`arn:aws:dynamodb:*:*:table/*User*`],
+    resources: [`arn:aws:dynamodb:${region}:*:table/${stackName}-*User*`],
   })
 );
 rotatorFunction.addToRolePolicy(
