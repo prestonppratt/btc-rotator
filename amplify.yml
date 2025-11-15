@@ -6,13 +6,11 @@ frontend:
         - nvm install 18
         - nvm use 18
         - npm ci
-        - '# Copy amplify_outputs.json to public directory for frontend access'
-        - cp amplify_outputs.json public/amplify_outputs.json || echo "amplify_outputs.json not found, backend may not be deployed yet"
     build:
       commands:
         - npm run build
-        - '# Copy amplify_outputs.json to dist directory'
-        - cp public/amplify_outputs.json dist/amplify_outputs.json || echo "amplify_outputs.json not found"
+        - '# Copy amplify_outputs.json from public to dist for runtime access'
+        - cp public/amplify_outputs.json dist/amplify_outputs.json || echo "amplify_outputs.json not found - backend may need to deploy first"
   artifacts:
     baseDirectory: dist
     files:
@@ -30,5 +28,5 @@ backend:
     build:
       commands:
         - '# Deploy backend with Amplify Gen 2'
-        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
-        - '# amplify_outputs.json should be generated in the current directory'
+        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID --outputs-out-dir public
+        - '# amplify_outputs.json should now be in public/ directory'
