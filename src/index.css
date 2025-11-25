@@ -44,3 +44,98 @@ body {
   animation: spin 0.8s linear infinite;
 }
 
+/* Glassmorphism utilities - Updated to match Login style */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.glass-nav {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Global Input Styling - Match Login Screen */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+select,
+textarea {
+  background-color: #ffffff !important;
+  color: #1a1a1a !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 0.5rem !important;
+  /* rounded-lg */
+  padding: 0.75rem 1rem !important;
+  /* px-4 py-3 */
+}
+
+input::placeholder {
+  color: #6b7280 !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none !important;
+  border-color: #FF6719 !important;
+  box-shadow: 0 0 0 2px rgba(255, 103, 25, 0.2) !important;
+}
+
+/* Amplify Authenticator Input Field Styling - Fix dark background and text */
+[data-amplify-authenticator] input[type="email"],
+[data-amplify-authenticator] input[type="text"],
+[data-amplify-authenticator] input[type="password"] {
+  background-color: #ffffff !important;
+  color: #1a1a1a !important;
+  border-color: #d1d5db !important;
+}
+
+[data-amplify-authenticator] input[type="email"]::placeholder,
+[data-amplify-authenticator] input[type="text"]::placeholder,
+[data-amplify-authenticator] input[type="password"]::placeholder {
+  color: #6b7280 !important;
+}
+
+[data-amplify-authenticator] input[type="email"]:focus,
+[data-amplify-authenticator] input[type="text"]:focus,
+[data-amplify-authenticator] input[type="password"]:focus {
+  background-color: #ffffff !important;
+  color: #1a1a1a !important;
+  border-color: #FF6719 !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(255, 103, 25, 0.2) !important;
+}
+
+/* Also target Amplify's field wrapper if it has a dark background */
+[data-amplify-authenticator] [data-amplify-field] {
+  background-color: transparent !important;
+}
+
+[data-amplify-authenticator] [data-amplify-field-wrapper] {
+  background-color: transparent !important;
+}

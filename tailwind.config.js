@@ -12,6 +12,8 @@ export default {
         'neon-green': '#00ff41',
         'neon-orange': '#ff6b35',
         'neon-green-dark': '#00cc33',
+        'primary': '#FF6719', // Login screen orange
+        'primary-dark': '#E5560E',
       },
       boxShadow: {
         'neon-green': '0 0 10px #00ff41, 0 0 20px #00ff41, 0 0 30px #00ff41',

@@ -8,7 +8,6 @@ import { fetchHistoricalPricesFromBackend, triggerFetchHistoricalPrices } from '
 import LoadingSpinner from './LoadingSpinner';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { TICKER_NAMES, SUPPORTED_TICKERS } from '../constants/tickers';
-import { useDenomination } from '../contexts/DenominationContext';
 
 
 interface PortfolioHolding {
@@ -20,18 +19,15 @@ interface PortfolioHolding {
 type Timeframe = '1h' | '1d' | '1w' | '1mo' | '3mo' | '6mo' | '1y' | '2y' | '5y';
 
 function Dashboard() {
-  const { denomination } = useDenomination();
   const [signal, setSignal] = useState<RotationSignal | null>(null);
-  const previousSignalRef = useRef<RotationSignal | null>(null);
+  const [previousSignal, setPreviousSignal] = useState<RotationSignal | null>(null);
   const confettiTriggered = useRef(false);
   const [portfolioHoldings, setPortfolioHoldings] = useState<PortfolioHolding[]>([]);
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>('1d');
   const [portfolioChartData, setPortfolioChartData] = useState<any[]>([]);
   const [isLoadingPortfolioChart, setIsLoadingPortfolioChart] = useState(false);
   const [bitcoinPrice, setBitcoinPrice] = useState<number>(0);
-  const [allAssetsHistoricalData, setAllAssetsHistoricalData] = useState<Map<string, Array<{ date: string; timestamp: number; priceUSD: number; priceBTC: number }>>>(new Map());
-
-
+  const [allAssetsHistoricalData, setAllAssetsHistoricalData] = useState<Map<string, Array<{ date: string; priceUSD: number; priceBTC: number }>>>(new Map());
   const [isLoadingAllAssetsData, setIsLoadingAllAssetsData] = useState(false);
   const [isPopulatingBackend, setIsPopulatingBackend] = useState(false);
   const [backendPopulateStatus, setBackendPopulateStatus] = useState<string | null>(null);
@@ -75,7 +71,6 @@ function Dashboard() {
       };
 
       // Check if this is a new rotation signal
-      const previousSignal = previousSignalRef.current;
       const isNewSignal = newSignal.shouldRotate &&
         (!previousSignal || !previousSignal.shouldRotate ||
           previousSignal.newTopTicker !== newSignal.newTopTicker);
@@ -93,9 +88,9 @@ function Dashboard() {
         }, 5000);
       }
 
-      previousSignalRef.current = newSignal;
+      setPreviousSignal(newSignal);
     }
-  }, [rotationData]);
+  }, [rotationData, previousSignal]);
 
   const triggerConfetti = () => {
     const duration = 3000;
@@ -529,7 +524,7 @@ function Dashboard() {
 
             // Format date
             const date = new Date(timestamp);
-            point.date = selectedTimeframe === '1h' || selectedTimeframe === '1d' || selectedTimeframe === '1mo'
+            point.date = selectedTimeframe === '1h' || selectedTimeframe === '1d'
               ? date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
               : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
@@ -577,59 +572,81 @@ function Dashboard() {
 
   // Load historical data for all assets (backend cached)
   useEffect(() => {
-    console.log('Effect: loadAllAssetsHistoricalData mounted');
     const loadAllAssetsHistoricalData = async () => {
-      // if (allAssetsHistoricalData.size > 0) return; // Already loaded
+      if (allAssetsHistoricalData.size > 0) return; // Already loaded
 
       setIsLoadingAllAssetsData(true);
 
-      console.log('Loading real historical data for all assets from backend...');
+      console.log('Generating sample data for demonstration');
 
-      try {
-        const dataMap = new Map<string, Array<{ date: string; timestamp: number; priceUSD: number; priceBTC: number }>>();
-        const days = 365; // 1 year
-        const endTimestamp = Date.now();
-        const startTimestamp = endTimestamp - (days * 24 * 60 * 60 * 1000);
+      // Generate sample data for demonstration
+      const mockData = new Map<string, Array<{ date: string; priceUSD: number; priceBTC: number }>>();
+      const now = new Date();
+      const days = 365;
 
-        // Fetch data for all supported tickers from backend
-        for (const ticker of SUPPORTED_TICKERS) {
-          try {
-            const prices = await fetchHistoricalPricesFromBackend(ticker, startTimestamp, endTimestamp);
+      // Use all supported tickers
+      const sampleTickers = [...SUPPORTED_TICKERS];
 
-            if (prices.length > 0) {
-              const formattedData = prices.map(p => ({
-                date: new Date(p.timestamp).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-                timestamp: p.timestamp,
-                priceUSD: p.priceUSD,
-                priceBTC: p.priceBTC,
-              }));
-              dataMap.set(ticker, formattedData);
-              console.log(`✓ Loaded ${prices.length} points for ${ticker} from backend`);
-            } else {
-              console.warn(`⚠ No backend data for ${ticker}`);
-            }
-          } catch (e) {
-            console.error(`Error loading ${ticker} from backend:`, e);
-          }
+      // Base prices (approximate recent values)
+      const basePrices: Record<string, number> = {
+        'BTC-USD': 95000,
+        'MSTR': 450,
+        'SMLR': 35,
+        'ASST': 28,
+        'FBTC': 42,
+        'MARA': 18,
+        'RIOT': 12,
+        'COIN': 200,
+        'HUT': 15,
+        'CLSK': 14,
+        'BITF': 2.5,
+        'WULF': 4.5,
+        'CORZ': 8,
+        'IREN': 10,
+        'CIFR': 5,
+        'BTBT': 3,
+      };
+
+      sampleTickers.forEach(ticker => {
+        const dataPoints = [];
+        const basePrice = basePrices[ticker] || 10;
+
+        for (let i = days; i >= 0; i--) {
+          const date = new Date(now);
+          date.setDate(date.getDate() - i);
+
+          // Create realistic price movement with trend
+          const dayProgress = (days - i) / days;
+          const trend = ticker === 'BTC-USD' ? 1.5 : 1.3; // Upward trend
+          const volatility = 0.02 + Math.random() * 0.03; // 2-5% daily volatility
+          const randomFactor = 1 + (Math.random() - 0.5) * volatility;
+
+          const priceUSD = basePrice * (0.7 + dayProgress * (trend - 0.7)) * randomFactor;
+          const btcPrice = ticker === 'BTC-USD' ? priceUSD : basePrices['BTC-USD'] * (0.7 + dayProgress * 0.8);
+          const priceBTC = ticker === 'BTC-USD' ? 1.0 : priceUSD / btcPrice;
+
+          dataPoints.push({
+            date: date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+            priceUSD,
+            priceBTC,
+          });
         }
 
-        if (dataMap.size > 0) {
-          setAllAssetsHistoricalData(dataMap);
-          console.log(`Successfully loaded real data for ${dataMap.size} assets from backend`);
-        } else {
-          console.warn('No backend data available for any assets. Backend may not be populated yet.');
-          setAllAssetsHistoricalData(new Map());
-        }
-      } catch (e) {
-        console.error('Error loading all assets historical data:', e);
-        setAllAssetsHistoricalData(new Map());
-      } finally {
-        setIsLoadingAllAssetsData(false);
-      }
+        mockData.set(ticker, dataPoints);
+      });
+
+      console.log('Generated sample data for', mockData.size, 'assets');
+      setAllAssetsHistoricalData(mockData);
+      setIsLoadingAllAssetsData(false);
     };
 
-    loadAllAssetsHistoricalData();
-  }, []); // Run once on mount
+    // Delay slightly to prioritize main chart
+    const timer = setTimeout(() => {
+      loadAllAssetsHistoricalData();
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [allAssetsHistoricalData.size]);
 
   // Format Bitcoin value
   const formatBitcoin = (value: number): string => {
@@ -698,8 +715,6 @@ function Dashboard() {
           </div>
         </div>
       )}
-
-
 
       {/* Recharts Line Chart */}
       <div className="glass-panel rounded-lg p-3 sm:p-4 md:p-6 shadow-lg">
@@ -773,8 +788,7 @@ function Dashboard() {
               />
             </LineChart>
           </ResponsiveContainer>
-        )
-        }
+        )}
       </div>
 
       {/* Portfolio Positions Chart */}
@@ -920,7 +934,7 @@ function Dashboard() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
           <div>
             <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
-              All Assets - Unit Price ({denomination === 'Sats' ? 'Sats' : '₿'})
+              All Assets - Unit Price (₿)
             </h2>
             <p className="text-xs text-gray-400 mt-1">
               Historical price of 1 unit of each asset denominated in Bitcoin
@@ -968,23 +982,7 @@ function Dashboard() {
 
         {/* Asset Selection */}
         <div className="mb-4 p-3 bg-white/5 rounded-lg border border-white/10">
-          <div className="flex justify-between items-center mb-2">
-            <p className="text-xs text-gray-400">Select assets to display:</p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setSelectedAssetsToDisplay(SUPPORTED_TICKERS.filter(t => t !== 'BTC-USD'))}
-                className="text-xs text-primary hover:text-primary-light transition-colors"
-              >
-                Select All
-              </button>
-              <button
-                onClick={() => setSelectedAssetsToDisplay([])}
-                className="text-xs text-gray-400 hover:text-white transition-colors"
-              >
-                Clear All
-              </button>
-            </div>
-          </div>
+          <p className="text-xs text-gray-400 mb-2">Select assets to display:</p>
           <div className="flex flex-wrap gap-3">
             {SUPPORTED_TICKERS.filter(t => t !== 'BTC-USD').map((ticker) => (
               <label key={ticker} className="flex items-center gap-2 cursor-pointer">
@@ -1022,16 +1020,9 @@ function Dashboard() {
             <LineChart margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis
-                dataKey="timestamp"
-                type="number"
-                domain={['dataMin', 'dataMax']}
-                tickFormatter={(ts) => {
-                  const date = new Date(ts);
-                  if (selectedAllAssetsTimeframe === '1mo' || selectedAllAssetsTimeframe === '3mo') {
-                    return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric' });
-                  }
-                  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                }}
+                dataKey="date"
+                type="category"
+                allowDuplicatedCategory={false}
                 stroke="#9CA3AF"
                 style={{ fontSize: '12px' }}
                 angle={-45}
@@ -1041,12 +1032,7 @@ function Dashboard() {
               <YAxis
                 stroke="#9CA3AF"
                 style={{ fontSize: '12px' }}
-                tickFormatter={(value) => {
-                  if (value === 0) return denomination === 'Sats' ? '0' : '₿0';
-                  return denomination === 'Sats'
-                    ? value.toLocaleString(undefined, { maximumFractionDigits: 0 })
-                    : `₿${formatBitcoin(value)}`;
-                }}
+                tickFormatter={(value) => `₿${formatBitcoin(value)}`}
               />
               <Tooltip
                 contentStyle={{
@@ -1056,16 +1042,13 @@ function Dashboard() {
                   color: '#fff',
                   backdropFilter: 'blur(4px)'
                 }}
-                labelFormatter={(label) => new Date(label).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                 formatter={(value: number, name: string) => {
-                  if (typeof value === 'number' && value > 0) {
-                    const displayName = TICKER_NAMES[name as keyof typeof TICKER_NAMES] || name;
-                    return [`₿${formatBitcoin(value)}`, displayName];
+                  if (typeof value === 'number') {
+                    return [`₿${formatBitcoin(value)}`, TICKER_NAMES[name as keyof typeof TICKER_NAMES] || name];
                   }
                   return ['N/A', name];
                 }}
               />
-
               <Legend wrapperStyle={{ paddingTop: '20px' }} />
               {(() => {
                 // Filter data based on selected timeframe
@@ -1098,7 +1081,7 @@ function Dashboard() {
                         mergedDataMap.set(dateKey, { date: dateKey, timestamp });
                       }
                       const existing = mergedDataMap.get(dateKey);
-                      existing[ticker] = denomination === 'Sats' ? point.priceBTC * 100000000 : point.priceBTC;
+                      existing[ticker] = point.priceBTC;
                     }
                   });
                 });
@@ -1158,225 +1141,6 @@ function Dashboard() {
       </div>
 
       {/* Community Section */}
-      {/* All Assets - USD Price Chart */}
-      <div className="glass-panel rounded-lg p-3 sm:p-4 md:p-6 shadow-lg mt-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-          <div>
-            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
-              All Assets - Unit Price ($)
-            </h2>
-            <p className="text-xs text-gray-400 mt-1">
-              Historical price of 1 unit of each asset denominated in USD
-            </p>
-          </div>
-          <div className="flex gap-2">
-            {(['1mo', '3mo', '6mo', '1y'] as const).map((tf) => (
-              <button
-                key={tf}
-                onClick={() => setSelectedUSDAssetsTimeframe(tf)}
-                className={`px-3 py-1 text-sm rounded transition-colors ${selectedUSDAssetsTimeframe === tf
-                  ? 'bg-primary text-white font-bold'
-                  : 'bg-white/10 text-gray-300 hover:bg-white/20'
-                  }`}
-              >
-                {tf}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* USD Asset Selection */}
-        <div className="mb-4 p-3 bg-white/5 rounded-lg border border-white/10">
-          <div className="flex justify-between items-center mb-2">
-            <p className="text-xs text-gray-400">Select assets to display:</p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setSelectedUSDAssetsToDisplay([...SUPPORTED_TICKERS])}
-                className="text-xs text-primary hover:text-primary-light transition-colors"
-              >
-                Select All
-              </button>
-              <button
-                onClick={() => setSelectedUSDAssetsToDisplay([])}
-                className="text-xs text-gray-400 hover:text-white transition-colors"
-              >
-                Clear All
-              </button>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {SUPPORTED_TICKERS.map((ticker) => (
-              <label key={ticker} className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selectedUSDAssetsToDisplay.includes(ticker)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedUSDAssetsToDisplay([...selectedUSDAssetsToDisplay, ticker]);
-                    } else {
-                      setSelectedUSDAssetsToDisplay(selectedUSDAssetsToDisplay.filter(t => t !== ticker));
-                    }
-                  }}
-                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-primary focus:ring-primary focus:ring-offset-gray-900"
-                />
-                <span className="text-sm text-gray-300">
-                  {TICKER_NAMES[ticker as keyof typeof TICKER_NAMES] || ticker}
-                </span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {allAssetsHistoricalData.size === 0 ? (
-          <div className="text-center py-8 sm:py-12 text-gray-400 text-sm sm:text-base">
-            No historical data available.
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height={400}>
-            <LineChart margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis
-                dataKey="timestamp"
-                type="number"
-                domain={['dataMin', 'dataMax']}
-                tickFormatter={(ts) => {
-                  const date = new Date(ts);
-                  if (selectedUSDAssetsTimeframe === '1mo' || selectedUSDAssetsTimeframe === '3mo') {
-                    return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric' });
-                  }
-                  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                }}
-                stroke="#9CA3AF"
-                style={{ fontSize: '12px' }}
-                angle={-45}
-                textAnchor="end"
-                height={60}
-              />
-              {/* Left Y-axis for all assets except BTC */}
-              <YAxis
-                yAxisId="left"
-                stroke="#9CA3AF"
-                style={{ fontSize: '12px' }}
-                tickFormatter={(value) => `$${value.toLocaleString()}`}
-              />
-              {/* Right Y-axis for BTC-USD */}
-              <YAxis
-                yAxisId="right"
-                orientation="right"
-                stroke="#F7931A"
-                style={{ fontSize: '12px' }}
-                tickFormatter={(value) => `$${value.toLocaleString()}`}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                  color: '#fff',
-                  backdropFilter: 'blur(4px)'
-                }}
-                labelFormatter={(label) => new Date(label).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                formatter={(value: number, name: string) => {
-                  if (typeof value === 'number') {
-                    return [`$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, TICKER_NAMES[name as keyof typeof TICKER_NAMES] || name];
-                  }
-                  return ['N/A', name];
-                }}
-              />
-              <Legend wrapperStyle={{ paddingTop: '20px' }} />
-              {(() => {
-                // Filter data based on selected timeframe
-                const cutoffDate = new Date();
-                switch (selectedUSDAssetsTimeframe) {
-                  case '1mo':
-                    cutoffDate.setMonth(cutoffDate.getMonth() - 1);
-                    break;
-                  case '3mo':
-                    cutoffDate.setMonth(cutoffDate.getMonth() - 3);
-                    break;
-                  case '6mo':
-                    cutoffDate.setMonth(cutoffDate.getMonth() - 6);
-                    break;
-                  case '1y':
-                    cutoffDate.setFullYear(cutoffDate.getFullYear() - 1);
-                    break;
-                }
-                const cutoffTimestamp = cutoffDate.getTime();
-
-                // Merge all data into a single array for the chart
-                const mergedDataMap = new Map<string, any>();
-
-                allAssetsHistoricalData.forEach((data, ticker) => {
-                  data.forEach(point => {
-                    const timestamp = new Date(point.date).getTime();
-                    if (timestamp >= cutoffTimestamp) {
-                      const key = point.timestamp.toString();
-                      if (!mergedDataMap.has(key)) {
-                        mergedDataMap.set(key, { date: point.date, timestamp: point.timestamp });
-                      }
-                      const existing = mergedDataMap.get(key);
-                      existing[ticker] = point.priceUSD; // Use USD price instead of BTC
-                    }
-                  });
-                });
-
-                const mergedData = Array.from(mergedDataMap.values())
-                  .sort((a, b) => a.timestamp - b.timestamp);
-
-                // Filter to show only selected assets
-                const tickersToDisplay = selectedUSDAssetsToDisplay;
-
-                // If no assets selected, show a message
-                if (tickersToDisplay.length === 0) {
-                  return (
-                    <text x="50%" y="50%" textAnchor="middle" fill="#9CA3AF" fontSize="14">
-                      Select at least one asset to display
-                    </text>
-                  );
-                }
-
-                return tickersToDisplay.map((ticker, index) => {
-                  // Generate distinct colors
-                  const colors = [
-                    '#F7931A', // BTC (Orange)
-                    '#3B82F6', // Blue
-                    '#10B981', // Green
-                    '#EF4444', // Red
-                    '#8B5CF6', // Purple
-                    '#F59E0B', // Amber
-                    '#EC4899', // Pink
-                    '#06B6D4', // Cyan
-                    '#F97316', // Orange
-                    '#14B8A6', // Teal
-                    '#A855F7', // Violet
-                    '#F43F5E', // Rose
-                    '#84CC16', // Lime
-                    '#06B6D4', // Sky
-                    '#F59E0B', // Yellow
-                    '#EC4899', // Fuchsia
-                  ];
-                  const color = ticker === 'BTC-USD' ? '#F7931A' : colors[(index + 1) % colors.length];
-
-                  return (
-                    <Line
-                      key={ticker}
-                      data={mergedData}
-                      type="monotone"
-                      dataKey={ticker}
-                      stroke={color}
-                      strokeWidth={ticker === 'BTC-USD' ? 3 : 2}
-                      dot={false}
-                      name={TICKER_NAMES[ticker as keyof typeof TICKER_NAMES] || ticker}
-                      connectNulls={true}
-                      yAxisId={ticker === 'BTC-USD' ? 'right' : 'left'}
-                    />
-                  );
-                });
-              })()}
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-      </div>
       <div className="glass-panel rounded-lg p-6 shadow-lg border border-gray-700">
         <div className="text-center">
           <h2 className="text-2xl md:text-3xl font-bold text-primary mb-3">

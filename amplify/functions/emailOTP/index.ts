@@ -1,10 +1,11 @@
 import { DefineAuthChallengeTriggerHandler, CreateAuthChallengeTriggerHandler, VerifyAuthChallengeResponseTriggerHandler } from 'aws-lambda';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 
+// AWS_REGION is automatically available in Lambda runtime
 const sesClient = new SESClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
 // Define what challenge to present to the user
-export const defineAuthChallenge: DefineAuthChallengeTriggerHandler = async (event) => {
+const defineAuthChallenge = async (event: any) => {
   // If user is not found, fail the challenge
   if (event.request.userNotFound) {
     event.response.issueTokens = false;
@@ -41,7 +42,7 @@ export const defineAuthChallenge: DefineAuthChallengeTriggerHandler = async (eve
 };
 
 // Create the challenge - generate OTP and send email
-export const createAuthChallenge: CreateAuthChallengeTriggerHandler = async (event) => {
+const createAuthChallenge = async (event: any) => {
   if (event.request.challengeName === 'CUSTOM_CHALLENGE') {
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -60,33 +61,36 @@ export const createAuthChallenge: CreateAuthChallengeTriggerHandler = async (eve
 
     // Send email with OTP
     const email = event.request.userAttributes.email;
-    const subject = 'Your Login Code';
+    const subject = 'Your BTC Rotator Verification Code';
+
+    // Plain text body for better deliverability
+    const textBody = `Your verification code is: ${otp}\n\nThis code will expire in 15 minutes.\n\nIf you didn't request this code, please ignore this email.`;
+
+    // HTML body with JSON-LD schema for Gmail
     const body = `
       <html>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #ffffff; color: #1a1a1a; padding: 40px 20px; text-align: center;">
-          <div style="max-width: 500px; margin: 0 auto;">
-            <div style="margin-bottom: 30px;">
-              <span style="display: inline-block; width: 40px; height: 40px; background-color: #FF6719; border-radius: 4px;"></span>
-            </div>
-            
-            <p style="font-size: 16px; margin-bottom: 30px;">Here's your verification code to sign in to BTC Rotator:</p>
-            
-            <div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; margin-bottom: 40px;">
-              ${otp}
-            </div>
-            
-            <p style="font-size: 14px; color: #666; margin-bottom: 30px;">
-              This code will only be valid for the next 15 minutes. If the code does not work, you can use this login verification link:
-            </p>
-            
-            <a href="#" style="display: inline-block; background-color: #FF6719; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold; font-size: 14px;">
-              Verify email
-            </a>
-            
-            <div style="margin-top: 60px; font-size: 12px; color: #999;">
-              © 2025 BTC Rotator Inc.<br>
-              548 Market Street PMB 72296, San Francisco, CA 94104
-            </div>
+        <head>
+          <script type="application/ld+json">
+          {
+            "@context": "http://schema.org",
+            "@type": "EmailMessage",
+            "potentialAction": {
+              "@type": "ViewAction",
+              "target": "http://localhost:3001",
+              "name": "Verify Email"
+            },
+            "description": "Your verification code for BTC Rotator"
+          }
+          </script>
+        </head>
+        <body style="font-family: sans-serif; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #000;">Verification Code</h2>
+            <p>Your 6-digit verification code is:</p>
+            <p style="font-size: 24px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;">${otp}</p>
+            <p>This code will expire in 15 minutes.</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+            <p style="font-size: 12px; color: #888;">If you didn't request this code, please ignore this email.</p>
           </div>
         </body>
       </html>
@@ -96,14 +100,16 @@ export const createAuthChallenge: CreateAuthChallengeTriggerHandler = async (eve
       // Use SES to send email with OTP
       // Note: SES email address needs to be verified in AWS Console
       // For sandbox, you may need to verify your email in SES first
-      const fromEmail = process.env.SES_FROM_EMAIL || process.env.AWS_SES_FROM_EMAIL || 'pppratt@gmail.com';
-      console.log(`Attempting to send OTP email from ${fromEmail} to ${email}`);
+      const fromEmail = process.env.SES_FROM_EMAIL || process.env.AWS_SES_FROM_EMAIL || 'noreply@amplifyapp.com';
+      const friendlyName = 'BTC Rotator';
+      const source = `${friendlyName} <${fromEmail}>`;
 
-      const result = await sesClient.send(new SendEmailCommand({
-        Source: fromEmail,
+      await sesClient.send(new SendEmailCommand({
+        Source: source,
         Destination: {
           ToAddresses: [email],
         },
+        ReplyToAddresses: [fromEmail],
         Message: {
           Subject: {
             Data: subject,
@@ -114,25 +120,16 @@ export const createAuthChallenge: CreateAuthChallengeTriggerHandler = async (eve
               Data: body,
               Charset: 'UTF-8',
             },
+            Text: {
+              Data: textBody,
+              Charset: 'UTF-8',
+            },
           },
         },
       }));
-      console.log(`OTP email sent successfully to ${email}. MessageId: ${result.MessageId}`);
-    } catch (error: any) {
+      console.log(`OTP email sent to ${email}`);
+    } catch (error) {
       console.error('Error sending email via SES:', error);
-      console.error('Error details:', {
-        message: error.message,
-        code: error.Code,
-        name: error.name,
-        stack: error.stack,
-      });
-      // Log the OTP to CloudWatch for debugging (TEMPORARY - remove in production!)
-      // This allows you to see the OTP in CloudWatch logs while SES is being set up
-      console.log(`========================================`);
-      console.log(`DEBUG: OTP CODE for ${email} is: ${otp}`);
-      console.log(`This code expires in 15 minutes`);
-      console.log(`Check CloudWatch logs to see this code`);
-      console.log(`========================================`);
       // If SES fails, we could fall back to Cognito's email, but for custom auth
       // we need to send the OTP ourselves. Log the error for debugging.
       // The authentication will still proceed, but user won't get the code.
@@ -143,7 +140,7 @@ export const createAuthChallenge: CreateAuthChallengeTriggerHandler = async (eve
 };
 
 // Verify the challenge response
-export const verifyAuthChallengeResponse: VerifyAuthChallengeResponseTriggerHandler = async (event) => {
+const verifyAuthChallengeResponse = async (event: any) => {
   const expectedAnswer = event.request.privateChallengeParameters?.otp;
   const expirationTime = event.request.privateChallengeParameters?.expirationTime;
   const providedAnswer = event.request.challengeAnswer;
@@ -162,5 +159,33 @@ export const verifyAuthChallengeResponse: VerifyAuthChallengeResponseTriggerHand
   }
 
   return event;
+};
+
+// Main handler that routes based on trigger source
+export const handler = async (event: any) => {
+  // Route to appropriate handler based on trigger source
+  if (event.triggerSource === 'DefineAuthChallenge_Authentication') {
+    return await defineAuthChallenge(event);
+  } else if (event.triggerSource === 'CreateAuthChallenge_Authentication') {
+    return await createAuthChallenge(event);
+  } else if (event.triggerSource === 'VerifyAuthChallengeResponse_Authentication') {
+    return await verifyAuthChallengeResponse(event);
+  }
+
+  // Fallback - try to determine from event structure
+  if (event.request && event.request.challengeName) {
+    // This is CreateAuthChallenge or VerifyAuthChallengeResponse
+    if (event.request.challengeAnswer !== undefined) {
+      return await verifyAuthChallengeResponse(event);
+    } else {
+      return await createAuthChallenge(event);
+    }
+  } else if (event.request && event.request.session !== undefined) {
+    // This is DefineAuthChallenge
+    return await defineAuthChallenge(event);
+  }
+
+  // Unknown trigger type
+  throw new Error(`Unknown trigger source: ${event.triggerSource || 'unknown'}`);
 };
 
