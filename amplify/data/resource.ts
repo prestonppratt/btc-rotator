@@ -1,5 +1,6 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 import { rotator } from '../functions/rotator/resource';
+import { fetchHistoricalPrices } from '../functions/fetchHistoricalPrices/resource';
 // import { getHistoricalPrices } from '../functions/getHistoricalPrices/resource';
 
 const schema = a.schema({
@@ -60,7 +61,7 @@ const schema = a.schema({
       days: a.integer(),
     })
     .returns(a.string())
-    .handler(a.handler.function('fetchHistoricalPrices'))
+    .handler(a.handler.function(fetchHistoricalPrices))
     .authorization((allow) => [allow.guest()]), // Allow unauthenticated access for development
 
   // Note: We'll use listHistoricalPrices with filters instead of a custom query
