@@ -62,27 +62,27 @@ const fetchLambda = backend.fetchHistoricalPrices.resources.lambda;
 // const getLambda = backend.getHistoricalPrices.resources.lambda; // Added
 const table = backend.data.resources.tables['HistoricalPrice'];
 
-if (table) { // Changed condition from `fetchLambda && table` to `table`
-  // Debugging: Grant broad permissions to verify IAM update (Removed)
-  // fetchLambda.addToRolePolicy(
-  //   new PolicyStatement({
-  //     actions: ['dynamodb:*'],
-  //     resources: ['*'],
-  //   })
-  // );
-
-  // Fetch Lambda (Write)
-  (fetchLambda as Function).addEnvironment('AMPLIFY_DATA_TABLE_NAME_HISTORICALPRICE', table.tableName);
-  table.grantWriteData(fetchLambda);
-
-  // Get Lambda (Read)
-  // (getLambda as Function).addEnvironment('AMPLIFY_DATA_TABLE_NAME_HISTORICALPRICE', table.tableName); // Added
-  // table.grantReadData(getLambda); // Added
-
-  // Grant DynamoDB read permissions to Unauthenticated Role (Guest)
-  // const unauthRole = backend.auth.resources.unauthenticatedUserIamRole;
-  // table.grantReadData(unauthRole);
-}
+// if (table) { // Changed condition from `fetchLambda && table` to `table`
+//   // Debugging: Grant broad permissions to verify IAM update (Removed)
+//   // fetchLambda.addToRolePolicy(
+//   //   new PolicyStatement({
+//   //     actions: ['dynamodb:*'],
+//   //     resources: ['*'],
+//   //   })
+//   // );
+//
+//   // Fetch Lambda (Write)
+//   // (fetchLambda as Function).addEnvironment('AMPLIFY_DATA_TABLE_NAME_HISTORICALPRICE', table.tableName);
+//   // table.grantWriteData(fetchLambda);
+//
+//   // Get Lambda (Read)
+//   // (getLambda as Function).addEnvironment('AMPLIFY_DATA_TABLE_NAME_HISTORICALPRICE', table.tableName); // Added
+//   // table.grantReadData(getLambda); // Added
+//
+//   // Grant DynamoDB read permissions to Unauthenticated Role (Guest)
+//   // const unauthRole = backend.auth.resources.unauthenticatedUserIamRole;
+//   // table.grantReadData(unauthRole);
+// }
 // } catch (error) {
 //   console.warn('Could not add DynamoDB permissions:', error);
 // }
