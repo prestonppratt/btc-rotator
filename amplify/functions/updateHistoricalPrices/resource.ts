@@ -5,6 +5,6 @@ export const updateHistoricalPrices = defineFunction({
   name: 'updateHistoricalPrices',
   entry: './handler.ts',
   timeoutSeconds: 300, // 5 minutes
-  resourceGroupName: 'data',
+  resourceGroupName: 'pricing',
 });
 
