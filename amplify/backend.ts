@@ -29,7 +29,7 @@ try {
 
   // Create EventBridge rule to trigger daily at midnight UTC
   const dailyUpdateRule = new Rule(backend.stack, 'DailyPriceUpdateRule', {
-    schedule: Schedule.cron({ hour: '0', minute: '0' }),
+    schedule: Schedule.cron({ minute: '0' }),
     description: 'Daily update of historical price data',
   });
 
