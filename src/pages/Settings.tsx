@@ -230,6 +230,16 @@ function Settings() {
               {message.text}
             </div>
           )}
+
+          {/* Debug Info */}
+          <div className="mt-8 p-4 bg-gray-900 rounded text-xs font-mono text-gray-400 overflow-auto">
+            <p className="font-bold text-gray-300 mb-2">Debug Info (User Data):</p>
+            <p>User ID: {userEmail}</p>
+            <p>Exists: {userExists ? 'Yes' : 'No'}</p>
+            <p>First Name State: "{firstName}"</p>
+            <p>Last Name State: "{lastName}"</p>
+            <p>Phone State: "{phone}"</p>
+          </div>
         </div>
       </div>
     </div>
