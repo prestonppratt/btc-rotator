@@ -79,7 +79,7 @@ try {
     fetchLambda.addToRolePolicy(
       new PolicyStatement({
         actions: ['lambda:InvokeFunction'],
-        resources: [fetchLambda.functionArn],
+        resources: ['*'], // Use wildcard to avoid circular dependency with functionArn
       })
     );
 
