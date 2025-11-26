@@ -26,6 +26,10 @@ function Settings() {
   const [userExists, setUserExists] = useState(false);
   const [userEmail, setUserEmail] = useState('');
 
+  const [lastSaveResult, setLastSaveResult] = useState<string>('None');
+  const [verificationResult, setVerificationResult] = useState<string>('None');
+  const [loadResult, setLoadResult] = useState<string>('None');
+
   useEffect(() => {
     const loadSettings = async () => {
       try {
@@ -34,6 +38,7 @@ function Settings() {
         setUserEmail(email);
 
         const userData = await client.models.User.get({ id: user.userId });
+        setLoadResult(JSON.stringify(userData.data || 'No data'));
 
         if (userData.data) {
           console.log('Loaded User Data:', userData.data);
@@ -51,6 +56,7 @@ function Settings() {
         }
       } catch (error) {
         console.error('Error loading settings:', error);
+        setLoadResult(`Error: ${(error as any).message}`);
       } finally {
         setIsLoading(false);
       }
@@ -58,9 +64,6 @@ function Settings() {
 
     loadSettings();
   }, [setDenomination]);
-
-  const [lastSaveResult, setLastSaveResult] = useState<string>('None');
-  const [verificationResult, setVerificationResult] = useState<string>('None');
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -255,6 +258,8 @@ function Settings() {
             <p>First Name State: "{firstName}"</p>
             <p>Last Name State: "{lastName}"</p>
             <p>Phone State: "{phone}"</p>
+            <p className="mt-2 font-bold text-gray-300">Load Result (Initial):</p>
+            <pre className="whitespace-pre-wrap">{loadResult}</pre>
             <p className="mt-2 font-bold text-gray-300">Last Save Result:</p>
             <pre className="whitespace-pre-wrap">{lastSaveResult}</pre>
             <p className="mt-2 font-bold text-gray-300">Immediate Verification:</p>
