@@ -36,6 +36,7 @@ function Settings() {
         const userData = await client.models.User.get({ id: user.userId });
 
         if (userData.data) {
+          console.log('Loaded User Data:', userData.data);
           setUserExists(true);
           setNotificationFreq((userData.data.notificationFreq as NotificationFreq) || 'weekly');
           setPhone(userData.data.phone || '');
@@ -45,6 +46,7 @@ function Settings() {
             setDenomination(userData.data.denomination as 'BTC' | 'Sats');
           }
         } else {
+          console.log('No user data found for ID:', user.userId);
           setUserExists(false);
         }
       } catch (error) {
@@ -68,9 +70,9 @@ function Settings() {
         await client.models.User.update({
           id: user.userId,
           notificationFreq: notificationFreq,
-          phone: phone || undefined,
-          firstName: firstName || undefined,
-          lastName: lastName || undefined,
+          phone: phone || null,
+          firstName: firstName || null,
+          lastName: lastName || null,
           denomination: denomination,
         });
       } else {
@@ -79,9 +81,9 @@ function Settings() {
           email: userEmail,
           signupDate: new Date().toISOString(),
           notificationFreq: notificationFreq,
-          phone: phone || undefined,
-          firstName: firstName || undefined,
-          lastName: lastName || undefined,
+          phone: phone || null,
+          firstName: firstName || null,
+          lastName: lastName || null,
           denomination: denomination,
           isPaid: false,
         });
@@ -105,7 +107,7 @@ function Settings() {
       setMessage({ type: 'success', text: 'Data refresh triggered successfully! Please wait a few minutes for data to populate.' });
     } catch (error) {
       console.error('Error refreshing data:', error);
-      setMessage({ type: 'error', text: 'Failed to trigger data refresh.' });
+      setMessage({ type: 'error', text: `Failed to trigger data refresh: ${(error as any).message || JSON.stringify(error)}` });
     } finally {
       setIsRefreshing(false);
     }

@@ -29,7 +29,7 @@ const schema = a.schema({
     })
     .identifier(['ticker', 'timestamp'])
     .authorization((allow) => [allow.guest(), allow.authenticated(), allow.publicApiKey()]),
-  /* Force update 3 */
+  /* Force update 4 */
 
   getRotationSignal: a
     .query()
@@ -65,7 +65,7 @@ const schema = a.schema({
     })
     .returns(a.string())
     .handler(a.handler.function(fetchHistoricalPrices))
-    .authorization((allow) => [allow.guest(), allow.authenticated()]), // Allow unauthenticated access for development
+    .authorization((allow) => [allow.guest(), allow.authenticated(), allow.publicApiKey()]), // Allow unauthenticated access for development
 
   // Note: We'll use listHistoricalPrices with filters instead of a custom query
   // The composite key (ticker, timestamp) allows efficient queries
