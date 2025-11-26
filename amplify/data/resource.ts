@@ -66,7 +66,12 @@ const schema = a.schema({
     })
     .returns(a.string())
     .handler(a.handler.function(fetchHistoricalPrices))
-    .authorization((allow) => [allow.guest(), allow.authenticated(), allow.publicApiKey()]), // Allow all access types to fix auth error
+    .authorization((allow) => [
+      allow.guest(),
+      allow.authenticated('identityPool'), // Enable IAM for authenticated users
+      allow.authenticated(), // Keep User Pool for other things
+      allow.publicApiKey()
+    ]), // Allow all access types to fix auth error
 
   // Note: We'll use listHistoricalPrices with filters instead of a custom query
   // The composite key (ticker, timestamp) allows efficient queries
