@@ -193,7 +193,7 @@ const storePrices = async (prices: HistoricalPrice[]): Promise<void> => {
 
 // Batching configuration – adjust as needed
 const BATCH_SIZE = 4; // number of tickers per Lambda invocation
-const BATCH_DELAY_MS = 5 * 60 * 1000; // 5 minutes between batches (can be increased for a 12‑hour spread)
+const BATCH_DELAY_MS = 1000; // 1 second between batches to prevent timeout
 
 /**
  * Core Lambda handler. Supports self‑invocation to pace API calls over many hours.

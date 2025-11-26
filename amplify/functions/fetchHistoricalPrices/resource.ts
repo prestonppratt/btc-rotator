@@ -3,6 +3,6 @@ import { defineFunction } from '@aws-amplify/backend';
 export const fetchHistoricalPrices = defineFunction({
   name: 'fetchHistoricalPrices',
   entry: './handler.ts',
-  timeoutSeconds: 300, // 5 minutes for fetching multiple tickers
+  timeoutSeconds: 900, // 15 minutes for fetching multiple tickers
   resourceGroupName: 'data',
 });
