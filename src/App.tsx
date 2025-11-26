@@ -18,7 +18,7 @@ import { SiSubstack } from 'react-icons/si';
 import { DenominationProvider } from './contexts/DenominationContext';
 
 
-type Page = 'dashboard' | 'portfolio' | 'settings';
+type Page = 'dashboard' | 'stack' | 'settings';
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { isLoading } = useAuthGuard();
@@ -43,8 +43,8 @@ function Navigation() {
   useEffect(() => {
     if (location.pathname === '/dashboard' || location.pathname === '/') {
       setCurrentPage('dashboard');
-    } else if (location.pathname === '/portfolio') {
-      setCurrentPage('portfolio');
+    } else if (location.pathname === '/stack') {
+      setCurrentPage('stack');
     } else if (location.pathname === '/settings') {
       setCurrentPage('settings');
     }
@@ -75,8 +75,8 @@ function Navigation() {
                 Dashboard
               </button>
               <button
-                onClick={() => handleNav('portfolio', '/portfolio')}
-                className={`px-3 py-2 rounded transition-all duration-300 ${currentPage === 'portfolio'
+                onClick={() => handleNav('stack', '/stack')}
+                className={`px-3 py-2 rounded transition-all duration-300 ${currentPage === 'stack'
                   ? 'text-primary bg-white/5 shadow-[0_0_15px_rgba(255,103,25,0.3)]'
                   : 'text-gray-400 hover:text-primary hover:bg-white/5'
                   }`}
@@ -143,8 +143,8 @@ function Navigation() {
             Dashboard
           </button>
           <button
-            onClick={() => handleNav('portfolio', '/portfolio')}
-            className={`flex-1 h-full flex items-center justify-center transition-colors ${currentPage === 'portfolio' ? 'text-primary' : 'text-gray-400'
+            onClick={() => handleNav('stack', '/stack')}
+            className={`flex-1 h-full flex items-center justify-center transition-colors ${currentPage === 'stack' ? 'text-primary' : 'text-gray-400'
               }`}
           >
             Stack
@@ -187,7 +187,7 @@ function AppContent() {
               <Routes>
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/portfolio" element={<Portfolio />} />
+                <Route path="/stack" element={<Portfolio />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/upgrade" element={<Upgrade />} />
                 <Route path="/disclaimer" element={<Disclaimer />} />
