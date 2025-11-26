@@ -210,6 +210,19 @@ export const handler: Handler = async (event, _context) => {
   const days = args.days || 365;
   const remaining: string[] = args.remainingTickers || allTickers;
 
+  // Security: Cap the number of tickers to prevent abuse/timeout
+  const MAX_TICKERS = 50;
+  if (allTickers.length > MAX_TICKERS) {
+    throw new Error(`Too many tickers provided. Max allowed: ${MAX_TICKERS}`);
+  }
+
+  // Security: Cap the number of days
+  const MAX_DAYS = 2000;
+  if (days > MAX_DAYS) {
+    console.warn(`Requested days (${days}) exceeds limit. Capping at ${MAX_DAYS}.`);
+  }
+  const safeDays = Math.min(Math.max(1, days), MAX_DAYS);
+
   // Take a slice for this batch
   const currentBatch = remaining.slice(0, BATCH_SIZE);
   const nextBatch = remaining.slice(BATCH_SIZE);
@@ -228,6 +241,13 @@ export const handler: Handler = async (event, _context) => {
 
   for (const ticker of currentBatch) {
     let hist: Array<{ timestamp: number; price: number }> = [];
+
+    // Security: Validate ticker format (alphanumeric + hyphens only) to prevent injection
+    if (!/^[A-Z0-9.-]+$/.test(ticker)) {
+      console.warn(`Skipping invalid ticker format: ${ticker}`);
+      continue;
+    }
+
     if (ticker === 'BTC-USD') {
       hist = btcHistorical;
     } else {
