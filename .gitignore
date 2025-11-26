@@ -13,7 +13,7 @@ dist-ssr
 *.local
 
 # Amplify
-amplify_outputs.json
+
 .amplify/
 
 # Editor directories and files
@@ -29,7 +29,7 @@ amplify_outputs.json
 
 # Amplify
 .amplify
-amplify_outputs.json
+
 amplify_outputs.json.bak
 
 # Environment variables
