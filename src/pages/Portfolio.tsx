@@ -3,7 +3,11 @@ import { SUPPORTED_TICKERS, TICKER_NAMES } from '../constants/tickers';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { TrashIcon } from '@heroicons/react/24/outline';
+import { generateClient } from 'aws-amplify/data';
+import type { Schema } from '../../amplify/data/resource';
 import { useDenomination } from '../contexts/DenominationContext';
+
+const client = generateClient<Schema>();
 
 interface Holding {
   ticker: string;
@@ -178,35 +182,7 @@ function Portfolio() {
     }));
   }, []);
 
-  // Load saved portfolio for current user
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const user = await getCurrentUser();
-        const email = ((user as any)?.attributes?.email as string) || 'guest';
-        const saved = localStorage.getItem(`portfolio_${email}`);
-        if (saved) {
-          const loaded = JSON.parse(saved) as Holding[];
-          // Migrate old format (without pricePerShare) to new format
-          const migrated = loaded.map(h => ({
-            ...h,
-            pricePerShare: (h as any).pricePerShare ?? 0,
-            isLoadingPrice: false
-          }));
-          setHoldings(migrated);
-          // Remove loaded tickers from available list
-          setAvailableTickers(prev => prev.filter(t => !migrated.some(l => l.ticker === t)));
-          // Fetch current prices for loaded holdings
-          setTimeout(() => {
-            migrated.forEach(h => updatePriceForTicker(h.ticker));
-          }, 100);
-        }
-      } catch (e) {
-        console.error('Error loading portfolio', e);
-      }
-    };
-    load();
-  }, []);
+
 
   // Fetch Bitcoin price on mount and periodically
   useEffect(() => {
@@ -268,14 +244,23 @@ function Portfolio() {
     setMessage(null);
     try {
       const user = await getCurrentUser();
+
+      // Save to backend
+      await client.models.User.update({
+        id: user.userId,
+        portfolio: JSON.stringify(holdings)
+      });
+
+      // Also save to local storage as backup/cache
       const email = ((user as any)?.attributes?.email as string) || 'guest';
       localStorage.setItem(`portfolio_${email}`, JSON.stringify(holdings));
+
       // Dispatch custom event to notify Dashboard
       window.dispatchEvent(new Event('portfolioUpdated'));
-      setMessage({ type: 'success', text: 'Stack saved for current user.' });
+      setMessage({ type: 'success', text: 'Stack saved to cloud.' });
     } catch (e) {
       console.error(e);
-      setMessage({ type: 'error', text: 'Failed to save stack.' });
+      setMessage({ type: 'error', text: 'Failed to save stack to cloud.' });
     }
     setIsSaving(false);
   };
@@ -284,12 +269,30 @@ function Portfolio() {
     setMessage(null);
     try {
       const user = await getCurrentUser();
-      const email = ((user as any)?.attributes?.email as string) || 'guest';
-      const saved = localStorage.getItem(`portfolio_${email}`);
-      if (saved) {
-        const loaded = JSON.parse(saved) as Holding[];
+
+      // Try loading from backend first
+      const userData = await client.models.User.get({ id: user.userId });
+      let loadedHoldings: Holding[] | null = null;
+
+      if (userData.data?.portfolio) {
+        // Backend has data
+        if (typeof userData.data.portfolio === 'string') {
+          loadedHoldings = JSON.parse(userData.data.portfolio);
+        } else {
+          loadedHoldings = userData.data.portfolio as unknown as Holding[];
+        }
+      } else {
+        // Fallback to local storage if backend is empty
+        const email = ((user as any)?.attributes?.email as string) || 'guest';
+        const saved = localStorage.getItem(`portfolio_${email}`);
+        if (saved) {
+          loadedHoldings = JSON.parse(saved);
+        }
+      }
+
+      if (loadedHoldings) {
         // Migrate old format to new format
-        const migrated = loaded.map(h => ({
+        const migrated = loadedHoldings.map(h => ({
           ...h,
           pricePerShare: (h as any).pricePerShare ?? 0,
           isLoadingPrice: false
@@ -304,7 +307,7 @@ function Portfolio() {
         setTimeout(() => {
           migrated.forEach(h => updatePriceForTicker(h.ticker));
         }, 100);
-        setMessage({ type: 'success', text: 'Stack loaded.' });
+        setMessage({ type: 'success', text: 'Stack loaded from cloud.' });
       } else {
         setMessage({ type: 'error', text: 'No saved stack found.' });
       }
@@ -313,6 +316,11 @@ function Portfolio() {
       setMessage({ type: 'error', text: 'Failed to load stack.' });
     }
   };
+
+  // Initial load effect
+  useEffect(() => {
+    loadPortfolio();
+  }, []);
 
   return (
     <div className="min-h-screen text-white p-4 pb-20">
