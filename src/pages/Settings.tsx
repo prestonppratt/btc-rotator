@@ -5,6 +5,9 @@ import type { Schema } from '../../amplify/data/resource';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useDenomination } from '../contexts/DenominationContext';
 
+import { triggerFetchHistoricalPrices } from '../services/historicalPriceService';
+import { SUPPORTED_TICKERS } from '../constants/tickers';
+
 const client = generateClient<Schema>();
 
 type NotificationFreq = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'off';
@@ -14,6 +17,7 @@ function Settings() {
   const [notificationFreq, setNotificationFreq] = useState<NotificationFreq>('weekly');
   const [phone, setPhone] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -55,6 +59,20 @@ function Settings() {
       setMessage({ type: 'error', text: 'Failed to save settings. Please try again.' });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleRefreshData = async () => {
+    setIsRefreshing(true);
+    setMessage(null);
+    try {
+      await triggerFetchHistoricalPrices(SUPPORTED_TICKERS, 365);
+      setMessage({ type: 'success', text: 'Data refresh triggered successfully! Please wait a few minutes for data to populate.' });
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      setMessage({ type: 'error', text: 'Failed to trigger data refresh.' });
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -120,8 +138,23 @@ function Settings() {
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+1 (555) 123-4567"
               className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-primary"
-            />
+            >
+            </input>
             <p className="text-xs text-gray-400 mt-1">Enter your phone number for SMS notifications (format: +1234567890). SMS requires AWS SNS to be configured.</p>
+          </div>
+
+          <div className="pt-4 border-t border-gray-700">
+            <h3 className="text-lg font-medium mb-3 text-primary">Data Management</h3>
+            <p className="text-sm text-gray-400 mb-3">
+              Manually trigger a refresh of historical price data from the backend. Use this if charts are empty.
+            </p>
+            <button
+              onClick={handleRefreshData}
+              disabled={isRefreshing}
+              className="w-full py-2 bg-gray-700 text-white font-bold rounded hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isRefreshing ? <LoadingSpinner size="sm" /> : 'Refresh Historical Data'}
+            </button>
           </div>
 
           <button

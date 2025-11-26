@@ -97,11 +97,32 @@ export const triggerFetchHistoricalPrices = async (
   days: number = 365
 ): Promise<string> => {
   try {
-    // Invoke Lambda directly via AWS SDK or use GraphQL mutation
-    // For now, we'll use a simple approach - just return a message
-    // The actual Lambda invocation should be done via AWS Console or CLI
-    console.log(`Trigger requested for tickers: ${tickers.join(', ')}, days: ${days}`);
-    return 'Please use AWS Console or CLI to invoke the fetchHistoricalPrices Lambda function';
+    console.log(`Triggering fetchHistoricalPrices for tickers: ${tickers.join(', ')}, days: ${days}`);
+
+    // Determine auth mode based on user session
+    let authMode: 'userPool' | 'apiKey' = 'apiKey';
+    try {
+      await getCurrentUser();
+      authMode = 'userPool';
+    } catch (e) {
+      // User is not signed in, use API Key (Public)
+      authMode = 'apiKey';
+    }
+
+    const response = await client.mutations.fetchHistoricalPrices({
+      tickers,
+      days,
+    }, {
+      authMode
+    });
+
+    if (response.errors) {
+      console.error('Error triggering fetchHistoricalPrices:', response.errors);
+      throw new Error(response.errors.map(e => e.message).join(', '));
+    }
+
+    console.log('Successfully triggered fetchHistoricalPrices:', response.data);
+    return response.data || 'Triggered successfully';
   } catch (error: any) {
     console.error('Error in triggerFetchHistoricalPrices:', error);
     throw error;
