@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useQuery, useQueries } from '@tanstack/react-query';
 import confetti from 'canvas-confetti';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { fetchBacktestData, type BacktestDataPoint } from '../services/backtestService';
@@ -399,181 +399,161 @@ function Dashboard() {
     }
   };
 
-  // Fetch portfolio chart data
+  // Fetch historical data for each portfolio holding using useQueries
+  // This ensures data is cached and not re-fetched on every render or BTC price update
+  const portfolioQueries = useQueries({
+    queries: portfolioHoldings.map(holding => ({
+      queryKey: ['historicalPrice', holding.ticker, selectedTimeframe],
+      queryFn: () => fetchHistoricalPrices(holding.ticker, selectedTimeframe),
+      staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+      refetchOnWindowFocus: false,
+    }))
+  });
+
+  // Calculate portfolio chart data when queries or BTC price changes
   useEffect(() => {
-    const loadChartData = async () => {
-      if (portfolioHoldings.length === 0) {
-        setPortfolioChartData([]);
-        return;
+    // Check if any query is loading
+    const isLoading = portfolioQueries.some(q => q.isLoading);
+    setIsLoadingPortfolioChart(isLoading);
+
+    if (isLoading || portfolioHoldings.length === 0) {
+      if (portfolioHoldings.length === 0) setPortfolioChartData([]);
+      return;
+    }
+
+    // Helper to find BTC price at exact timestamp or closest match (fallback)
+    // We need BTC history for this. We can fetch it as a separate query or just fetch it here if not cached.
+    // Ideally, we should have a useQuery for BTC history too.
+    // For now, let's assume we can get it from the queries if one of them is BTC, or we might need to fetch it.
+    // Actually, the previous logic fetched BTC history explicitly. Let's add a query for BTC history.
+  }, [portfolioQueries, portfolioHoldings, bitcoinPrice, selectedTimeframe]);
+
+  // We need a dedicated query for BTC history to normalize prices
+  const { data: btcHistoricalData } = useQuery({
+    queryKey: ['historicalPrice', 'BTC-USD', selectedTimeframe],
+    queryFn: () => fetchHistoricalPrices('BTC-USD', selectedTimeframe),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // Memoize the chart data calculation
+  const calculatedChartData = useMemo(() => {
+    if (!btcHistoricalData || portfolioHoldings.length === 0) return [];
+
+    // Check if all portfolio queries have data
+    const allQueriesSuccess = portfolioQueries.every(q => q.isSuccess && q.data);
+    if (!allQueriesSuccess) return [];
+
+    console.log('Recalculating portfolio chart data...');
+
+    // Create a sorted array of BTC prices for efficient lookup
+    const sortedBtcPrices = [...btcHistoricalData].sort((a, b) => a.timestamp - b.timestamp);
+
+    const getBtcPriceAtTime = (timestamp: number): number => {
+      // Try exact match first
+      const exactMatch = sortedBtcPrices.find(d => d.timestamp === timestamp);
+      if (exactMatch) return exactMatch.price;
+
+      // Find closest timestamp
+      let closest = sortedBtcPrices[0];
+      let minDiff = Math.abs(sortedBtcPrices[0].timestamp - timestamp);
+
+      for (const btcPoint of sortedBtcPrices) {
+        const diff = Math.abs(btcPoint.timestamp - timestamp);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closest = btcPoint;
+        }
       }
 
-      setIsLoadingPortfolioChart(true);
+      const maxDiff = selectedTimeframe === '1h' || selectedTimeframe === '1d'
+        ? 60 * 60 * 1000
+        : 24 * 60 * 60 * 1000;
 
-      try {
-        // Fetch historical Bitcoin prices first for reference
-        const btcHistoricalData = await fetchHistoricalPrices('BTC-USD', selectedTimeframe);
-        console.log('BTC Historical Data:', btcHistoricalData.length, 'points');
-
-        // Create a sorted array of BTC prices for efficient lookup (for fallback calculations)
-        const sortedBtcPrices = [...btcHistoricalData].sort((a, b) => a.timestamp - b.timestamp);
-
-        // Helper to find BTC price at exact timestamp or closest match (fallback)
-        const getBtcPriceAtTime = (timestamp: number): number => {
-          // Try exact match first
-          const exactMatch = sortedBtcPrices.find(d => d.timestamp === timestamp);
-          if (exactMatch) return exactMatch.price;
-
-          // Find closest timestamp (within reasonable range)
-          let closest = sortedBtcPrices[0];
-          let minDiff = Math.abs(sortedBtcPrices[0].timestamp - timestamp);
-
-          for (const btcPoint of sortedBtcPrices) {
-            const diff = Math.abs(btcPoint.timestamp - timestamp);
-            if (diff < minDiff) {
-              minDiff = diff;
-              closest = btcPoint;
-            }
-          }
-
-          // Only use if within 1 hour (for intraday) or 1 day (for longer timeframes)
-          const maxDiff = selectedTimeframe === '1h' || selectedTimeframe === '1d'
-            ? 60 * 60 * 1000  // 1 hour in ms
-            : 24 * 60 * 60 * 1000; // 1 day in ms
-
-          if (minDiff <= maxDiff) {
-            return closest.price;
-          }
-
-          return bitcoinPrice; // Fallback to current price
-        };
-
-        // Collect all unique timestamps from all positions
-        const allTimestamps = new Set<number>();
-        const positionDataMap = new Map<string, Array<{ timestamp: number; price: number; priceBTC: number }>>();
-
-        // Fetch historical data for each position from backend (fast!)
-        for (const holding of portfolioHoldings) {
-          console.log(`Fetching ${selectedTimeframe} data for position: ${holding.ticker} (${holding.shares} shares)`);
-          const historicalData = await fetchHistoricalPrices(holding.ticker, selectedTimeframe);
-          console.log(`${holding.ticker}: ${historicalData.length} data points`, historicalData.slice(0, 3));
-
-          if (historicalData.length > 0) {
-            positionDataMap.set(holding.ticker, historicalData);
-            historicalData.forEach(({ timestamp }) => allTimestamps.add(timestamp));
-            console.log(`✓ ${holding.ticker}: Added ${historicalData.length} points to chart`);
-          } else {
-            console.warn(`✗ No historical data found for ${holding.ticker} for ${selectedTimeframe} timeframe`);
-          }
-        }
-
-        console.log(`Total unique timestamps: ${allTimestamps.size}`);
-        console.log(`Position data map keys:`, Array.from(positionDataMap.keys()));
-
-        // Create chart data points for each timestamp
-        const chartDataArray = Array.from(allTimestamps)
-          .sort((a, b) => a - b)
-          .map((timestamp) => {
-            // Get BTC price at this exact timestamp
-            const btcPriceAtTime = getBtcPriceAtTime(timestamp);
-
-            // Initialize point with date and total value
-            const point: { date: string; timestamp: number;[key: string]: string | number } = {
-              date: '',
-              timestamp,
-            };
-
-            // Sum up value of all positions at this timestamp
-            let totalBtcValue = 0;
-
-            // Calculate unit price in BTC for each position (data already has priceBTC)
-            portfolioHoldings.forEach((holding) => {
-              const positionData = positionDataMap.get(holding.ticker);
-              if (positionData) {
-                // Find the closest price point for this timestamp
-                let closestData = positionData[0];
-                let minDiff = Math.abs(positionData[0].timestamp - timestamp);
-
-                for (const dataPoint of positionData) {
-                  const diff = Math.abs(dataPoint.timestamp - timestamp);
-                  if (diff < minDiff) {
-                    minDiff = diff;
-                    closestData = dataPoint;
-                  }
-                }
-
-                // Use priceBTC directly from backend (already denominated in BTC)
-                // For BTC-USD, the unit price in BTC is always 1
-                // For other assets, use the calculated priceBTC
-                let unitPriceBtc = 0;
-                if (holding.ticker === 'BTC-USD') {
-                  unitPriceBtc = 1; // BTC priced in BTC is always 1
-                } else if (closestData.priceBTC > 0) {
-                  unitPriceBtc = closestData.priceBTC;
-                }
-
-                // Store unit price for this position
-                point[holding.ticker] = unitPriceBtc;
-
-                // Calculate total value for this position (unit price * shares)
-                if (unitPriceBtc > 0 && holding.shares > 0) {
-                  const positionValueBtc = unitPriceBtc * holding.shares;
-                  totalBtcValue += positionValueBtc;
-                }
-              } else {
-                point[holding.ticker] = 0;
-              }
-            });
-
-            // Add total stack value
-            point['Total Stack Value'] = totalBtcValue;
-
-            // Format date
-            const date = new Date(timestamp);
-            point.date = selectedTimeframe === '1h' || selectedTimeframe === '1d' || selectedTimeframe === '1mo'
-              ? date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-              : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-            return point;
-          })
-          .filter(point => {
-            // Keep points where at least one position has data OR total stack value > 0
-            const hasPositionData = portfolioHoldings.some(holding => {
-              const value = point[holding.ticker];
-              return typeof value === 'number' && value > 0;
-            });
-            const hasTotalValue = (point['Total Stack Value'] as number) > 0;
-            return hasPositionData || hasTotalValue;
-          });
-
-        console.log(`Chart data array: ${chartDataArray.length} points for ${selectedTimeframe} timeframe`);
-        if (chartDataArray.length > 0) {
-          console.log('Sample chart data point:', chartDataArray[0]);
-          console.log('Chart data keys (positions):', Object.keys(chartDataArray[0]).filter(k => k !== 'date' && k !== 'timestamp' && k !== 'Total Stack Value'));
-
-          // Log how many non-zero values each position has
-          portfolioHoldings.forEach(holding => {
-            const nonZeroCount = chartDataArray.filter(p => {
-              const val = p[holding.ticker];
-              return typeof val === 'number' && val > 0;
-            }).length;
-            const maxVal = Math.max(...chartDataArray.map(p => (p[holding.ticker] as number) || 0));
-            const minVal = Math.min(...chartDataArray.map(p => (p[holding.ticker] as number) || 0).filter(v => v > 0));
-            console.log(`${holding.ticker}: ${nonZeroCount}/${chartDataArray.length} points, unit price range: ₿${formatBitcoin(minVal)} - ₿${formatBitcoin(maxVal)}`);
-          });
-        } else {
-          console.warn('No chart data generated! Check if backend has data for the selected timeframe.');
-        }
-        setPortfolioChartData(chartDataArray);
-      } catch (e) {
-        console.error('Error loading portfolio chart data', e);
-        setPortfolioChartData([]);
-      } finally {
-        setIsLoadingPortfolioChart(false);
+      if (minDiff <= maxDiff) {
+        return closest.price;
       }
+
+      return bitcoinPrice; // Fallback to current price
     };
 
-    loadChartData();
-  }, [portfolioHoldings, selectedTimeframe, bitcoinPrice]);
+    // Collect all unique timestamps
+    const allTimestamps = new Set<number>();
+    const positionDataMap = new Map<string, Array<{ timestamp: number; price: number; priceBTC: number }>>();
+
+    portfolioHoldings.forEach((holding, index) => {
+      const query = portfolioQueries[index];
+      if (query.data && query.data.length > 0) {
+        positionDataMap.set(holding.ticker, query.data);
+        query.data.forEach((d: any) => allTimestamps.add(d.timestamp));
+      }
+    });
+
+    const chartDataArray = Array.from(allTimestamps)
+      .sort((a, b) => a - b)
+      .map((timestamp) => {
+        const point: { date: string; timestamp: number;[key: string]: string | number } = {
+          date: '',
+          timestamp,
+        };
+
+        let totalBtcValue = 0;
+
+        portfolioHoldings.forEach((holding) => {
+          const positionData = positionDataMap.get(holding.ticker);
+          if (positionData) {
+            let closestData = positionData[0];
+            let minDiff = Math.abs(positionData[0].timestamp - timestamp);
+
+            for (const dataPoint of positionData) {
+              const diff = Math.abs(dataPoint.timestamp - timestamp);
+              if (diff < minDiff) {
+                minDiff = diff;
+                closestData = dataPoint;
+              }
+            }
+
+            let unitPriceBtc = 0;
+            if (holding.ticker === 'BTC-USD') {
+              unitPriceBtc = 1;
+            } else if (closestData.priceBTC > 0) {
+              unitPriceBtc = closestData.priceBTC;
+            }
+
+            point[holding.ticker] = unitPriceBtc;
+
+            if (unitPriceBtc > 0 && holding.shares > 0) {
+              totalBtcValue += unitPriceBtc * holding.shares;
+            }
+          } else {
+            point[holding.ticker] = 0;
+          }
+        });
+
+        point['Total Stack Value'] = totalBtcValue;
+
+        const date = new Date(timestamp);
+        point.date = selectedTimeframe === '1h' || selectedTimeframe === '1d' || selectedTimeframe === '1mo'
+          ? date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+          : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+        return point;
+      })
+      .filter(point => {
+        const hasPositionData = portfolioHoldings.some(holding => {
+          const value = point[holding.ticker];
+          return typeof value === 'number' && value > 0;
+        });
+        const hasTotalValue = (point['Total Stack Value'] as number) > 0;
+        return hasPositionData || hasTotalValue;
+      });
+
+    return chartDataArray;
+  }, [portfolioQueries, portfolioHoldings, btcHistoricalData, bitcoinPrice, selectedTimeframe]);
+
+  // Update state when calculated data changes
+  useEffect(() => {
+    setPortfolioChartData(calculatedChartData);
+  }, [calculatedChartData]);
 
   // Fetch historical data for all assets (backend cached) using React Query
   const { data: allAssetsDataMap, isLoading: isAllAssetsLoading } = useQuery({
