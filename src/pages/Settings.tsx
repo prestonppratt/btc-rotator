@@ -15,6 +15,7 @@ type NotificationFreq = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'off';
 function Settings() {
   const { denomination, setDenomination } = useDenomination();
   const [notificationFreq, setNotificationFreq] = useState<NotificationFreq>('weekly');
+  const [name, setName] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -30,6 +31,10 @@ function Settings() {
         if (userData.data) {
           setNotificationFreq((userData.data.notificationFreq as NotificationFreq) || 'weekly');
           setPhone(userData.data.phone || '');
+          setName(userData.data.name || '');
+          if (userData.data.denomination) {
+            setDenomination(userData.data.denomination as 'BTC' | 'Sats');
+          }
         }
       } catch (error) {
         console.error('Error loading settings:', error);
@@ -39,7 +44,7 @@ function Settings() {
     };
 
     loadSettings();
-  }, []);
+  }, [setDenomination]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -51,6 +56,8 @@ function Settings() {
         id: user.userId,
         notificationFreq: notificationFreq,
         phone: phone || undefined,
+        name: name || undefined,
+        denomination: denomination,
       });
 
       setMessage({ type: 'success', text: 'Settings saved successfully!' });
@@ -113,6 +120,17 @@ function Settings() {
               </button>
             </div>
             <p className="text-xs text-gray-400 mt-1">Choose between Bitcoin (BTC) and Satoshis (Sats) for all charts.</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your Name"
+              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-primary"
+            />
           </div>
 
           <div>
