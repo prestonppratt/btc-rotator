@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useQuery, useQueries } from '@tanstack/react-query';
 import { SUPPORTED_TICKERS, TICKER_NAMES } from '../constants/tickers';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { getCurrentUser } from 'aws-amplify/auth';
@@ -129,13 +130,49 @@ function Portfolio() {
     holdingsRef.current = holdings;
   }, [holdings]);
 
-  // Fetch Bitcoin price
-  const updateBitcoinPrice = async () => {
-    const btcPrice = await fetchBitcoinPrice();
-    if (btcPrice > 0) {
-      setBitcoinPrice(btcPrice);
+  // Fetch Bitcoin price using useQuery
+  const { data: btcPriceData } = useQuery({
+    queryKey: ['bitcoinPrice'],
+    queryFn: fetchBitcoinPrice,
+    refetchInterval: 30000,
+    staleTime: 1000 * 60, // 1 minute
+  });
+
+  // Update bitcoinPrice state when query data changes (for compatibility)
+  useEffect(() => {
+    if (btcPriceData && btcPriceData > 0) {
+      setBitcoinPrice(btcPriceData);
     }
-  };
+  }, [btcPriceData]);
+
+  // Fetch prices for all holdings using useQueries
+  const priceQueries = useQueries({
+    queries: holdings.map(h => ({
+      queryKey: ['price', h.ticker],
+      queryFn: () => fetchPrice(h.ticker),
+      refetchInterval: 30000,
+      staleTime: 1000 * 60, // 1 minute
+      enabled: !!h.ticker,
+    }))
+  });
+
+  // Derive display holdings by merging state with query data
+  const displayHoldings = useMemo(() => {
+    return holdings.map((h, index) => {
+      const query = priceQueries[index];
+      const livePrice = query?.data;
+      const isLoading = query?.isLoading;
+
+      // Use live price if available, otherwise fallback to stored price
+      const priceToUse = (livePrice && livePrice > 0) ? livePrice : h.pricePerShare;
+
+      return {
+        ...h,
+        pricePerShare: priceToUse,
+        isLoadingPrice: isLoading && !priceToUse, // Only show loading if we have no price at all
+      };
+    });
+  }, [holdings, priceQueries]);
 
   // Convert USD price to Bitcoin price
   const usdToBtc = (usdPrice: number): number => {
@@ -144,70 +181,6 @@ function Portfolio() {
     }
     return 0;
   };
-
-  // Fetch price for a single ticker and update holdings
-  const updatePriceForTicker = async (ticker: string) => {
-    setHoldings(prev => prev.map(h =>
-      h.ticker === ticker ? { ...h, isLoadingPrice: true } : h
-    ));
-
-    const price = await fetchPrice(ticker);
-
-    setHoldings(prev => prev.map(h =>
-      h.ticker === ticker ? { ...h, pricePerShare: price, isLoadingPrice: false } : h
-    ));
-  };
-
-  // Fetch prices for all holdings
-  const updateAllPrices = useCallback(async (currentHoldings: Holding[]) => {
-    if (currentHoldings.length === 0) return;
-
-    // Note: We don't set isLoadingPrice=true here to avoid flashing UI on background updates
-
-    // Fetch all prices in parallel
-    const pricePromises = currentHoldings.map(async (h) => {
-      const price = await fetchPrice(h.ticker);
-      return { ticker: h.ticker, price };
-    });
-
-    const results = await Promise.all(pricePromises);
-
-    // Update all prices
-    setHoldings(prev => prev.map(h => {
-      const result = results.find(r => r.ticker === h.ticker);
-      // Only update price if we got a valid non-zero price, otherwise keep existing
-      return result && result.price > 0
-        ? { ...h, pricePerShare: result.price, isLoadingPrice: false }
-        : { ...h, isLoadingPrice: false };
-    }));
-  }, []);
-
-
-
-  // Fetch Bitcoin price on mount and periodically
-  useEffect(() => {
-    updateBitcoinPrice();
-    const btcInterval = setInterval(() => {
-      updateBitcoinPrice();
-    }, 30000); // Update Bitcoin price every 30 seconds
-
-    return () => clearInterval(btcInterval);
-  }, []);
-
-  // Real-time price updates - fetch every 30 seconds
-  useEffect(() => {
-    if (holdings.length === 0) return;
-
-    // Initial fetch
-    updateAllPrices(holdings);
-
-    // Set up interval for updates (every 30 seconds)
-    const interval = setInterval(() => {
-      updateAllPrices(holdingsRef.current);
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [holdings.length, updateAllPrices]); // Re-run when holdings count changes
 
   // Functions to add and remove holdings
   const addHolding = async (ticker: string) => {
@@ -219,9 +192,6 @@ function Portfolio() {
     setHoldings([...holdings, newHolding]);
     setAvailableTickers((prev) => prev.filter((t) => t !== ticker));
     setSelectedTicker('');
-
-    // Fetch price immediately for the new holding
-    updatePriceForTicker(ticker);
   };
 
   const removeHolding = (ticker: string) => {
@@ -233,8 +203,8 @@ function Portfolio() {
     setHoldings(holdings.map((h) => (h.ticker === ticker ? { ...h, shares } : h)));
   };
 
-  // Calculate total value in Bitcoin
-  const totalValue = holdings.reduce((sum, h) => {
+  // Calculate total value in Bitcoin using displayHoldings
+  const totalValue = displayHoldings.reduce((sum, h) => {
     const usdValue = h.pricePerShare * h.shares;
     return sum + usdToBtc(usdValue);
   }, 0);
@@ -246,6 +216,9 @@ function Portfolio() {
       const user = await getCurrentUser();
       const email = user.signInDetails?.loginId || ((user as any)?.attributes?.email as string) || 'guest';
 
+      // Use displayHoldings to save the latest prices
+      const holdingsToSave = displayHoldings.map(({ isLoadingPrice, ...h }) => h);
+
       // Check if user exists
       const userData = await client.models.User.get({ id: user.userId });
 
@@ -253,7 +226,7 @@ function Portfolio() {
         // Update existing user
         await client.models.User.update({
           id: user.userId,
-          portfolio: JSON.stringify(holdings)
+          portfolio: JSON.stringify(holdingsToSave)
         });
       } else {
         // Create new user record
@@ -262,13 +235,13 @@ function Portfolio() {
           email: email,
           signupDate: new Date().toISOString(),
           notificationFreq: 'weekly', // Default
-          portfolio: JSON.stringify(holdings),
+          portfolio: JSON.stringify(holdingsToSave),
           isPaid: false
         });
       }
 
       // Also save to local storage as backup/cache
-      localStorage.setItem(`portfolio_${email}`, JSON.stringify(holdings));
+      localStorage.setItem(`portfolio_${email}`, JSON.stringify(holdingsToSave));
 
       // Dispatch custom event to notify Dashboard
       window.dispatchEvent(new Event('portfolioUpdated'));
@@ -318,10 +291,6 @@ function Portfolio() {
           const used = migrated.map(h => h.ticker);
           return SUPPORTED_TICKERS.filter(t => !used.includes(t));
         });
-        // Fetch current prices for loaded holdings
-        setTimeout(() => {
-          migrated.forEach(h => updatePriceForTicker(h.ticker));
-        }, 100);
         setMessage({ type: 'success', text: 'Stack loaded from cloud.' });
       } else {
         setMessage({ type: 'error', text: 'No saved stack found.' });
@@ -397,8 +366,8 @@ function Portfolio() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700/50">
-              {holdings.length > 0 ? (
-                holdings.map((h) => {
+              {displayHoldings.length > 0 ? (
+                displayHoldings.map((h) => {
                   const usdPositionValue = h.pricePerShare * h.shares;
                   const btcPositionValue = usdToBtc(usdPositionValue);
                   const btcPricePerShare = usdToBtc(h.pricePerShare);
@@ -462,7 +431,7 @@ function Portfolio() {
                 </tr>
               )}
             </tbody>
-            {holdings.length > 0 && (
+            {displayHoldings.length > 0 && (
               <tfoot className="bg-white/5 border-t border-gray-700/50">
                 <tr>
                   <td colSpan={3} className="px-4 py-4 text-right font-bold text-gray-300">
@@ -482,8 +451,8 @@ function Portfolio() {
 
           {/* Mobile Card View */}
           <div className="md:hidden space-y-4 p-4">
-            {holdings.length > 0 ? (
-              holdings.map((h) => {
+            {displayHoldings.length > 0 ? (
+              displayHoldings.map((h) => {
                 const usdPositionValue = h.pricePerShare * h.shares;
                 const btcPositionValue = usdToBtc(usdPositionValue);
                 const btcPricePerShare = usdToBtc(h.pricePerShare);
@@ -557,7 +526,7 @@ function Portfolio() {
             )}
 
             {/* Mobile Total Footer */}
-            {holdings.length > 0 && (
+            {displayHoldings.length > 0 && (
               <div className="mt-4 pt-4 border-t border-gray-700">
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-gray-300">Total Stack</span>
