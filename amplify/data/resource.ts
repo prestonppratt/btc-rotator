@@ -65,7 +65,7 @@ const schema = a.schema({
     })
     .returns(a.string())
     .handler(a.handler.function(fetchHistoricalPrices))
-    .authorization((allow) => [allow.guest(), allow.authenticated(), allow.publicApiKey()]), // Allow unauthenticated access for development
+    .authorization((allow) => [allow.publicApiKey()]), // Force API Key only to debug auth issue
 
   // Note: We'll use listHistoricalPrices with filters instead of a custom query
   // The composite key (ticker, timestamp) allows efficient queries
