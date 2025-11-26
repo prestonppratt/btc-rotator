@@ -7,7 +7,8 @@ const schema = a.schema({
   User: a
     .model({
       email: a.string().required(),
-      name: a.string(),
+      firstName: a.string(),
+      lastName: a.string(),
       phone: a.string(),
       isPaid: a.boolean().required().default(false),
       signupDate: a.datetime().required(),
