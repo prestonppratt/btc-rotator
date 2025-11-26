@@ -28,12 +28,12 @@ try {
   const updateLambda = backend.updateHistoricalPrices.resources.lambda;
 
   // Create EventBridge rule to trigger daily at midnight UTC
-  // const dailyUpdateRule = new Rule(backend.stack, 'DailyPriceUpdateRule', {
-  //   schedule: Schedule.cron({ hour: '0', minute: '0' }),
-  //   description: 'Daily update of historical price data',
-  // });
+  const dailyUpdateRule = new Rule(backend.stack, 'DailyPriceUpdateRule', {
+    schedule: Schedule.cron({ hour: '0', minute: '0' }),
+    description: 'Daily update of historical price data',
+  });
 
-  // dailyUpdateRule.addTarget(new LambdaFunction(updateLambda));
+  dailyUpdateRule.addTarget(new LambdaFunction(updateLambda));
 } catch (error) {
   // In sandbox, scheduling may need to be set up manually
   console.warn('Could not set up scheduled price updates:', error);
