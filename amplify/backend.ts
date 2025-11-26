@@ -75,6 +75,14 @@ try {
     (fetchLambda as Function).addEnvironment('AMPLIFY_DATA_TABLE_NAME_HISTORICALPRICE', table.tableName);
     table.grantWriteData(fetchLambda);
 
+    // Grant permission for the Lambda to invoke itself (for batch processing)
+    fetchLambda.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['lambda:InvokeFunction'],
+        resources: [fetchLambda.functionArn],
+      })
+    );
+
     // Get Lambda (Read)
     // (getLambda as Function).addEnvironment('AMPLIFY_DATA_TABLE_NAME_HISTORICALPRICE', table.tableName); // Added
     // table.grantReadData(getLambda); // Added
