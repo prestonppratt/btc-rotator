@@ -383,9 +383,10 @@ function Portfolio() {
           </div>
         </div>
 
-        {/* Holdings Table */}
+        {/* Holdings List - Responsive Views */}
         <div className="glass-panel rounded-lg overflow-hidden">
-          <table className="w-full">
+          {/* Desktop Table View */}
+          <table className="w-full hidden md:table">
             <thead>
               <tr className="bg-white/5 text-left text-xs uppercase text-gray-400">
                 <th className="px-4 py-3 font-semibold">Asset</th>
@@ -418,7 +419,7 @@ function Portfolio() {
                           value={h.shares || ''}
                           onChange={(e) => updateShares(h.ticker, parseFloat(e.target.value) || 0)}
                           placeholder="0"
-                          className="w-24 text-right"
+                          className="w-24 text-right bg-black/20 border border-gray-700 rounded px-2 py-1 focus:border-primary focus:outline-none"
                         />
                       </td>
                       <td className="px-4 py-4 text-right font-mono text-gray-300">
@@ -478,6 +479,98 @@ function Portfolio() {
               </tfoot>
             )}
           </table>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-4 p-4">
+            {holdings.length > 0 ? (
+              holdings.map((h) => {
+                const usdPositionValue = h.pricePerShare * h.shares;
+                const btcPositionValue = usdToBtc(usdPositionValue);
+                const btcPricePerShare = usdToBtc(h.pricePerShare);
+
+                return (
+                  <div key={h.ticker} className="bg-white/5 rounded-lg p-4 border border-gray-700/50">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <div className="font-bold text-lg text-white">
+                          {(TICKER_NAMES as Record<string, string>)[h.ticker] || h.ticker}
+                        </div>
+                        <div className="text-sm text-gray-500">{h.ticker}</div>
+                      </div>
+                      <button
+                        onClick={() => removeHolding(h.ticker)}
+                        className="text-gray-500 hover:text-red-500 p-2 -mr-2"
+                      >
+                        <TrashIcon className="h-5 w-5" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <label className="text-sm text-gray-400">Quantity</label>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={h.shares || ''}
+                          onChange={(e) => updateShares(h.ticker, parseFloat(e.target.value) || 0)}
+                          placeholder="0"
+                          className="w-32 text-right bg-black/20 border border-gray-700 rounded px-3 py-2 focus:border-primary focus:outline-none text-white"
+                        />
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-400">Price ({denomination === 'Sats' ? 'Sats' : '₿'})</span>
+                        <span className="font-mono text-gray-300">
+                          {h.isLoadingPrice ? (
+                            <span className="text-gray-500 text-xs">Loading...</span>
+                          ) : btcPricePerShare > 0 ? (
+                            <span>
+                              {denomination === 'Sats'
+                                ? `${(btcPricePerShare * 100000000).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                                : `₿${formatBitcoin(btcPricePerShare)}`
+                              }
+                            </span>
+                          ) : (
+                            <span className="text-yellow-500 text-xs">N/A</span>
+                          )}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center pt-2 border-t border-gray-700/50">
+                        <span className="text-sm font-medium text-gray-300">Value</span>
+                        <span className="font-mono font-bold text-lg text-primary">
+                          {denomination === 'Sats'
+                            ? `${(btcPositionValue * 100000000).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                            : `₿${formatBitcoin(btcPositionValue)}`
+                          }
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                No positions added yet. Use the menu above to add assets.
+              </div>
+            )}
+
+            {/* Mobile Total Footer */}
+            {holdings.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-700">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-gray-300">Total Stack</span>
+                  <span className="font-mono font-bold text-xl text-primary">
+                    {denomination === 'Sats'
+                      ? `${(totalValue * 100000000).toLocaleString(undefined, { maximumFractionDigits: 0 })} Sats`
+                      : `₿${formatBitcoin(totalValue)}`
+                    }
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {message && (
