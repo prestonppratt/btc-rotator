@@ -6,11 +6,10 @@ import { rotator } from './functions/rotator/resource';
 import { fetchHistoricalPrices } from './functions/fetchHistoricalPrices/resource';
 import { updateHistoricalPrices } from './functions/updateHistoricalPrices/resource';
 import { getHistoricalPrices } from './functions/getHistoricalPrices/resource';
-import { PolicyStatement, ArnPrincipal } from 'aws-cdk-lib/aws-iam';
+import { PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import { Function } from 'aws-cdk-lib/aws-lambda';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
 
 // Backend with auth, data, and passwordless email OTP authentication
 const backend = defineBackend({
@@ -86,20 +85,15 @@ try {
 
     // Fix for S3 AccessDenied error during build
     // Grant the Amplify Build Role access to the deployment bucket to read the schema
+    // We do this by attaching a policy to the role itself, rather than the bucket,
+    // as modifying the bucket policy of an imported bucket can be problematic.
     const deploymentBucketName = 'amplify-d24onflt4hl1r4-ma-amplifydataamplifycodege-khrisk5c59p2';
-    const deploymentBucket = Bucket.fromBucketName(backend.stack, 'DeploymentBucket', deploymentBucketName);
+    const buildRole = Role.fromRoleName(backend.stack, 'BuildRole', 'AmplifyServiceRole-Custom');
 
-    // We can't easily get the exact build role ARN dynamically, and it changes (assumed role).
-    // But the base role is likely 'AmplifyServiceRole-Custom'.
-    // For now, we'll allow the specific assumed role pattern or the root of the account if needed,
-    // but a safer bet for this specific error is to allow the specific action on the specific resource
-    // for the principal that matches the build role.
-
-    deploymentBucket.addToResourcePolicy(
+    buildRole.addToPrincipalPolicy(
       new PolicyStatement({
         actions: ['s3:GetObject'],
-        resources: [deploymentBucket.arnForObjects('model-schema.graphql')],
-        principals: [new ArnPrincipal(`arn:aws:iam::${backend.stack.account}:role/AmplifyServiceRole-Custom`)],
+        resources: [`arn:aws:s3:::${deploymentBucketName}/model-schema.graphql`],
       })
     );
 
