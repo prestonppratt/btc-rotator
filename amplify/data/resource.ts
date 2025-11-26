@@ -16,6 +16,7 @@ const schema = a.schema({
       denomination: a.string(),
       portfolio: a.json(),
       tradeHistory: a.json(),
+      _schemaVersion: a.integer(), // Force schema update
     })
     .authorization((allow) => [allow.owner()]),
 
