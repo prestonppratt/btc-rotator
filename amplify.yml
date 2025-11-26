@@ -9,8 +9,6 @@ frontend:
     build:
       commands:
         - npm run build
-        - '# Copy amplify_outputs.json from public to dist for runtime access'
-        - cp public/amplify_outputs.json dist/amplify_outputs.json || echo "amplify_outputs.json not found - backend may need to deploy first"
   artifacts:
     baseDirectory: dist
     files:
@@ -28,5 +26,5 @@ backend:
     build:
       commands:
         - '# Deploy backend with Amplify Gen 2'
-        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID --outputs-out-dir public
-        - '# amplify_outputs.json should now be in public/ directory'
+        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID --outputs-out-dir .
+        - '# amplify_outputs.json should now be in root directory'
