@@ -66,7 +66,7 @@ function Settings() {
     setIsRefreshing(true);
     setMessage(null);
     try {
-      await triggerFetchHistoricalPrices(SUPPORTED_TICKERS, 365);
+      await triggerFetchHistoricalPrices([...SUPPORTED_TICKERS], 365);
       setMessage({ type: 'success', text: 'Data refresh triggered successfully! Please wait a few minutes for data to populate.' });
     } catch (error) {
       console.error('Error refreshing data:', error);
