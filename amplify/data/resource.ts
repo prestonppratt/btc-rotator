@@ -29,7 +29,7 @@ const schema = a.schema({
     })
     .identifier(['ticker', 'timestamp'])
     .authorization((allow) => [allow.guest(), allow.authenticated(), allow.publicApiKey()]),
-  /* Force update 4 */
+  /* Force update 5 */
 
   getRotationSignal: a
     .query()
@@ -65,7 +65,7 @@ const schema = a.schema({
     })
     .returns(a.string())
     .handler(a.handler.function(fetchHistoricalPrices))
-    .authorization((allow) => [allow.publicApiKey()]), // Force API Key only to debug auth issue
+    .authorization((allow) => [allow.guest(), allow.authenticated(), allow.publicApiKey()]), // Allow all access types to fix auth error
 
   // Note: We'll use listHistoricalPrices with filters instead of a custom query
   // The composite key (ticker, timestamp) allows efficient queries
