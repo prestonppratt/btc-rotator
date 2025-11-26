@@ -70,6 +70,13 @@ const schema = a.schema({
 
   // Note: We'll use listHistoricalPrices with filters instead of a custom query
   // The composite key (ticker, timestamp) allows efficient queries
+
+  System: a
+    .model({
+      key: a.id().required(),
+      value: a.string(),
+    })
+    .authorization((allow) => [allow.publicApiKey()]),
 });
 
 export type Schema = ClientSchema<typeof schema>;
