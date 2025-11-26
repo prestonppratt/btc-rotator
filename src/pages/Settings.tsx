@@ -59,15 +59,22 @@ function Settings() {
     loadSettings();
   }, [setDenomination]);
 
+  const [lastSaveResult, setLastSaveResult] = useState<string>('None');
+  const [verificationResult, setVerificationResult] = useState<string>('None');
+
   const handleSave = async () => {
     setIsSaving(true);
     setMessage(null);
+    setLastSaveResult('Saving...');
+    setVerificationResult('Pending...');
 
     try {
       const user = await getCurrentUser();
+      console.log('Saving for user:', user.userId);
 
+      let result;
       if (userExists) {
-        await client.models.User.update({
+        result = await client.models.User.update({
           id: user.userId,
           notificationFreq: notificationFreq,
           phone: phone || null,
@@ -76,7 +83,7 @@ function Settings() {
           denomination: denomination,
         });
       } else {
-        await client.models.User.create({
+        result = await client.models.User.create({
           id: user.userId,
           email: userEmail,
           signupDate: new Date().toISOString(),
@@ -90,9 +97,18 @@ function Settings() {
         setUserExists(true);
       }
 
+      console.log('Save result:', result);
+      setLastSaveResult(JSON.stringify(result.data || result.errors || 'No data'));
+
+      // Immediate verification
+      const verify = await client.models.User.get({ id: user.userId });
+      console.log('Verification get:', verify);
+      setVerificationResult(JSON.stringify(verify.data || 'No data'));
+
       setMessage({ type: 'success', text: 'Settings saved successfully!' });
     } catch (error) {
       console.error('Error saving settings:', error);
+      setLastSaveResult(`Error: ${(error as any).message}`);
       setMessage({ type: 'error', text: 'Failed to save settings. Please try again.' });
     } finally {
       setIsSaving(false);
@@ -239,6 +255,10 @@ function Settings() {
             <p>First Name State: "{firstName}"</p>
             <p>Last Name State: "{lastName}"</p>
             <p>Phone State: "{phone}"</p>
+            <p className="mt-2 font-bold text-gray-300">Last Save Result:</p>
+            <pre className="whitespace-pre-wrap">{lastSaveResult}</pre>
+            <p className="mt-2 font-bold text-gray-300">Immediate Verification:</p>
+            <pre className="whitespace-pre-wrap">{verificationResult}</pre>
           </div>
         </div>
       </div>
