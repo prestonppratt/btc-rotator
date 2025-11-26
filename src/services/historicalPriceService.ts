@@ -99,15 +99,8 @@ export const triggerFetchHistoricalPrices = async (
   try {
     console.log(`Triggering fetchHistoricalPrices for tickers: ${tickers.join(', ')}, days: ${days}`);
 
-    // Determine auth mode based on user session
-    let authMode: 'userPool' | 'apiKey' = 'apiKey';
-    try {
-      await getCurrentUser();
-      authMode = 'userPool';
-    } catch (e) {
-      // User is not signed in, use API Key (Public)
-      authMode = 'apiKey';
-    }
+    // Use IAM auth (Guest/Public) which has been verified to work
+    const authMode: 'iam' = 'iam';
 
     const response = await client.mutations.fetchHistoricalPrices({
       tickers,
