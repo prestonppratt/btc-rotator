@@ -28,5 +28,5 @@ backend:
     build:
       commands:
         - '# Deploy backend with Amplify Gen 2'
-        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID --outputs-out-dir public --no-download-amplify-outputs
         - '# amplify_outputs.json should now be in public/ directory'
