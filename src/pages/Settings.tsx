@@ -26,10 +26,6 @@ function Settings() {
   const [userExists, setUserExists] = useState(false);
   const [userEmail, setUserEmail] = useState('');
 
-  const [lastSaveResult, setLastSaveResult] = useState<string>('None');
-  const [verificationResult, setVerificationResult] = useState<string>('None');
-  const [loadResult, setLoadResult] = useState<string>('None');
-
   useEffect(() => {
     const loadSettings = async () => {
       try {
@@ -38,25 +34,20 @@ function Settings() {
         setUserEmail(email);
 
         const userData = await client.models.User.get({ id: user.userId });
-        setLoadResult(JSON.stringify(userData.data || 'No data'));
 
         if (userData.data) {
-          console.log('Loaded User Data:', userData.data);
+          const data = userData.data;
           setUserExists(true);
-          setNotificationFreq((userData.data.notificationFreq as NotificationFreq) || 'weekly');
-          setPhone(userData.data.phone || '');
-          setFirstName(userData.data.firstName || '');
-          setLastName(userData.data.lastName || '');
-          if (userData.data.denomination) {
-            setDenomination(userData.data.denomination as 'BTC' | 'Sats');
-          }
+          if (data.firstName) setFirstName(data.firstName);
+          if (data.lastName) setLastName(data.lastName);
+          if (data.phone) setPhone(data.phone);
+          if (data.notificationFreq) setNotificationFreq(data.notificationFreq as NotificationFreq);
+          if (data.denomination) setDenomination(data.denomination as 'BTC' | 'Sats');
         } else {
-          console.log('No user data found for ID:', user.userId);
           setUserExists(false);
         }
       } catch (error) {
         console.error('Error loading settings:', error);
-        setLoadResult(`Error: ${(error as any).message}`);
       } finally {
         setIsLoading(false);
       }
@@ -86,7 +77,8 @@ function Settings() {
           denomination: denomination,
         });
       } else {
-        result = await client.models.User.create({
+        // Create user record
+        await client.models.User.create({
           id: user.userId,
           email: userEmail,
           signupDate: new Date().toISOString(),
@@ -100,18 +92,9 @@ function Settings() {
         setUserExists(true);
       }
 
-      console.log('Save result:', result);
-      setLastSaveResult(JSON.stringify(result.data || result.errors || 'No data'));
-
-      // Immediate verification
-      const verify = await client.models.User.get({ id: user.userId });
-      console.log('Verification get:', verify);
-      setVerificationResult(JSON.stringify(verify.data || 'No data'));
-
       setMessage({ type: 'success', text: 'Settings saved successfully!' });
     } catch (error) {
       console.error('Error saving settings:', error);
-      setLastSaveResult(`Error: ${(error as any).message}`);
       setMessage({ type: 'error', text: 'Failed to save settings. Please try again.' });
     } finally {
       setIsSaving(false);
@@ -250,21 +233,6 @@ function Settings() {
             </div>
           )}
 
-          {/* Debug Info */}
-          <div className="mt-8 p-4 bg-gray-900 rounded text-xs font-mono text-gray-400 overflow-auto">
-            <p className="font-bold text-gray-300 mb-2">Debug Info (User Data):</p>
-            <p>User ID: {userEmail}</p>
-            <p>Exists: {userExists ? 'Yes' : 'No'}</p>
-            <p>First Name State: "{firstName}"</p>
-            <p>Last Name State: "{lastName}"</p>
-            <p>Phone State: "{phone}"</p>
-            <p className="mt-2 font-bold text-gray-300">Load Result (Initial):</p>
-            <pre className="whitespace-pre-wrap">{loadResult}</pre>
-            <p className="mt-2 font-bold text-gray-300">Last Save Result:</p>
-            <pre className="whitespace-pre-wrap">{lastSaveResult}</pre>
-            <p className="mt-2 font-bold text-gray-300">Immediate Verification:</p>
-            <pre className="whitespace-pre-wrap">{verificationResult}</pre>
-          </div>
         </div>
       </div>
     </div>
