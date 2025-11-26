@@ -575,61 +575,56 @@ function Dashboard() {
     loadChartData();
   }, [portfolioHoldings, selectedTimeframe, bitcoinPrice]);
 
-  // Load historical data for all assets (backend cached)
-  useEffect(() => {
-    console.log('Effect: loadAllAssetsHistoricalData mounted');
-    const loadAllAssetsHistoricalData = async () => {
-      // if (allAssetsHistoricalData.size > 0) return; // Already loaded
-
-      setIsLoadingAllAssetsData(true);
-
+  // Fetch historical data for all assets (backend cached) using React Query
+  const { data: allAssetsDataMap, isLoading: isAllAssetsLoading } = useQuery({
+    queryKey: ['allAssetsHistoricalData'],
+    queryFn: async () => {
       console.log('Loading real historical data for all assets from backend...');
+      const dataMap = new Map<string, Array<{ date: string; timestamp: number; priceUSD: number; priceBTC: number }>>();
+      const days = 365; // 1 year
+      const endTimestamp = Date.now();
+      const startTimestamp = endTimestamp - (days * 24 * 60 * 60 * 1000);
 
-      try {
-        const dataMap = new Map<string, Array<{ date: string; timestamp: number; priceUSD: number; priceBTC: number }>>();
-        const days = 365; // 1 year
-        const endTimestamp = Date.now();
-        const startTimestamp = endTimestamp - (days * 24 * 60 * 60 * 1000);
+      // Fetch data for all supported tickers from backend
+      await Promise.all(SUPPORTED_TICKERS.map(async (ticker) => {
+        try {
+          const prices = await fetchHistoricalPricesFromBackend(ticker, startTimestamp, endTimestamp);
 
-        // Fetch data for all supported tickers from backend
-        for (const ticker of SUPPORTED_TICKERS) {
-          try {
-            const prices = await fetchHistoricalPricesFromBackend(ticker, startTimestamp, endTimestamp);
-
-            if (prices.length > 0) {
-              const formattedData = prices.map(p => ({
-                date: new Date(p.timestamp).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-                timestamp: p.timestamp,
-                priceUSD: p.priceUSD,
-                priceBTC: p.priceBTC,
-              }));
-              dataMap.set(ticker, formattedData);
-              console.log(`✓ Loaded ${prices.length} points for ${ticker} from backend`);
-            } else {
-              console.warn(`⚠ No backend data for ${ticker}`);
-            }
-          } catch (e) {
-            console.error(`Error loading ${ticker} from backend:`, e);
+          if (prices.length > 0) {
+            const formattedData = prices.map(p => ({
+              date: new Date(p.timestamp).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+              timestamp: p.timestamp,
+              priceUSD: p.priceUSD,
+              priceBTC: p.priceBTC,
+            }));
+            dataMap.set(ticker, formattedData);
+            console.log(`✓ Loaded ${prices.length} points for ${ticker} from backend`);
+          } else {
+            console.warn(`⚠ No backend data for ${ticker}`);
           }
+        } catch (e) {
+          console.error(`Error loading ${ticker} from backend:`, e);
         }
+      }));
 
-        if (dataMap.size > 0) {
-          setAllAssetsHistoricalData(dataMap);
-          console.log(`Successfully loaded real data for ${dataMap.size} assets from backend`);
-        } else {
-          console.warn('No backend data available for any assets. Backend may not be populated yet.');
-          setAllAssetsHistoricalData(new Map());
-        }
-      } catch (e) {
-        console.error('Error loading all assets historical data:', e);
-        setAllAssetsHistoricalData(new Map());
-      } finally {
-        setIsLoadingAllAssetsData(false);
+      if (dataMap.size > 0) {
+        console.log(`Successfully loaded real data for ${dataMap.size} assets from backend`);
+      } else {
+        console.warn('No backend data available for any assets. Backend may not be populated yet.');
       }
-    };
+      return dataMap;
+    },
+    staleTime: 1000 * 60 * 60, // Cache for 1 hour
+    refetchOnWindowFocus: false,
+  });
 
-    loadAllAssetsHistoricalData();
-  }, []); // Run once on mount
+  // Sync query data to state for compatibility with existing code
+  useEffect(() => {
+    if (allAssetsDataMap) {
+      setAllAssetsHistoricalData(allAssetsDataMap);
+      setIsLoadingAllAssetsData(false);
+    }
+  }, [allAssetsDataMap]);
 
   // Format Bitcoin value
   const formatBitcoin = (value: number): string => {
