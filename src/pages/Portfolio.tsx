@@ -244,15 +244,30 @@ function Portfolio() {
     setMessage(null);
     try {
       const user = await getCurrentUser();
+      const email = user.signInDetails?.loginId || ((user as any)?.attributes?.email as string) || 'guest';
 
-      // Save to backend
-      await client.models.User.update({
-        id: user.userId,
-        portfolio: JSON.stringify(holdings)
-      });
+      // Check if user exists
+      const userData = await client.models.User.get({ id: user.userId });
+
+      if (userData.data) {
+        // Update existing user
+        await client.models.User.update({
+          id: user.userId,
+          portfolio: JSON.stringify(holdings)
+        });
+      } else {
+        // Create new user record
+        await client.models.User.create({
+          id: user.userId,
+          email: email,
+          signupDate: new Date().toISOString(),
+          notificationFreq: 'weekly', // Default
+          portfolio: JSON.stringify(holdings),
+          isPaid: false
+        });
+      }
 
       // Also save to local storage as backup/cache
-      const email = ((user as any)?.attributes?.email as string) || 'guest';
       localStorage.setItem(`portfolio_${email}`, JSON.stringify(holdings));
 
       // Dispatch custom event to notify Dashboard

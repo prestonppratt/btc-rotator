@@ -23,13 +23,20 @@ function Settings() {
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  const [userExists, setUserExists] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+
   useEffect(() => {
     const loadSettings = async () => {
       try {
         const user = await getCurrentUser();
+        const email = user.signInDetails?.loginId || '';
+        setUserEmail(email);
+
         const userData = await client.models.User.get({ id: user.userId });
 
         if (userData.data) {
+          setUserExists(true);
           setNotificationFreq((userData.data.notificationFreq as NotificationFreq) || 'weekly');
           setPhone(userData.data.phone || '');
           setFirstName(userData.data.firstName || '');
@@ -37,6 +44,8 @@ function Settings() {
           if (userData.data.denomination) {
             setDenomination(userData.data.denomination as 'BTC' | 'Sats');
           }
+        } else {
+          setUserExists(false);
         }
       } catch (error) {
         console.error('Error loading settings:', error);
@@ -54,14 +63,30 @@ function Settings() {
 
     try {
       const user = await getCurrentUser();
-      await client.models.User.update({
-        id: user.userId,
-        notificationFreq: notificationFreq,
-        phone: phone || undefined,
-        firstName: firstName || undefined,
-        lastName: lastName || undefined,
-        denomination: denomination,
-      });
+
+      if (userExists) {
+        await client.models.User.update({
+          id: user.userId,
+          notificationFreq: notificationFreq,
+          phone: phone || undefined,
+          firstName: firstName || undefined,
+          lastName: lastName || undefined,
+          denomination: denomination,
+        });
+      } else {
+        await client.models.User.create({
+          id: user.userId,
+          email: userEmail,
+          signupDate: new Date().toISOString(),
+          notificationFreq: notificationFreq,
+          phone: phone || undefined,
+          firstName: firstName || undefined,
+          lastName: lastName || undefined,
+          denomination: denomination,
+          isPaid: false,
+        });
+        setUserExists(true);
+      }
 
       setMessage({ type: 'success', text: 'Settings saved successfully!' });
     } catch (error) {
