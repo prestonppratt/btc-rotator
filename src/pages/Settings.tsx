@@ -59,8 +59,7 @@ function Settings() {
   const handleSave = async () => {
     setIsSaving(true);
     setMessage(null);
-    setLastSaveResult('Saving...');
-    setVerificationResult('Pending...');
+
 
     try {
       const user = await getCurrentUser();
