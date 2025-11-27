@@ -20,16 +20,16 @@ export const SUPPORTED_TICKERS = [
 
 export type TickerSymbol = typeof SUPPORTED_TICKERS[number];
 
-export const TICKER_NAMES: Record<TickerSymbol, string> = {
+export const TICKER_NAMES: Record<string, string> = {
   'BTC-USD': 'Bitcoin',
   'MSTR': 'MicroStrategy',
-  'SMLR': 'Semler Scientific, Inc.',
-  'ASST': 'Strive Asset Management, LLC',
+  'SMLR': 'Semler Scientific',
+  'ASST': 'Asset Entities',
   'FBTC': 'Fidelity Wise Origin Bitcoin Fund',
   'MARA': 'Marathon Digital',
   'RIOT': 'Riot Platforms',
   'COIN': 'Coinbase',
-  'HUT': 'Hut 8 Mining',
+  'HUT': 'Hut 8',
   'CLSK': 'CleanSpark',
   'BITF': 'Bitfarms',
   'WULF': 'TeraWulf',
