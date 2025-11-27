@@ -68,11 +68,7 @@ const fetchStockHistorical = async (ticker: string, days: number): Promise<Array
     return fetchCoinGeckoHistorical('backed-microstrategy', days);
   }
 
-  // Special handling for SMLR: Limit to 30 days if needed (library handles rate limits better, but keeping logic)
-  if (ticker === 'SMLR') {
-    console.log('Overriding SMLR days to 30');
-    days = 30;
-  }
+
 
   const endDate = new Date();
   const startDate = new Date();
