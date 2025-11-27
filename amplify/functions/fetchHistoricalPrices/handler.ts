@@ -58,7 +58,9 @@ const fetchBitcoinHistorical = async (days: number): Promise<Array<{ timestamp: 
   return fetchCoinGeckoHistorical('bitcoin', days);
 };
 
-// Fetch stock historical prices from Yahoo Finance (or CoinGecko fallback)
+import yahooFinance from 'yahoo-finance2';
+
+// Fetch stock historical prices from Yahoo Finance using the library
 const fetchStockHistorical = async (ticker: string, days: number): Promise<Array<{ timestamp: number; price: number }>> => {
   // Special handling for stocks available on CoinGecko
   if (ticker === 'MSTR') {
@@ -66,52 +68,38 @@ const fetchStockHistorical = async (ticker: string, days: number): Promise<Array
     return fetchCoinGeckoHistorical('backed-microstrategy', days);
   }
 
-  // Special handling for SMLR: Limit to 30 days to avoid Yahoo Finance rate limits
+  // Special handling for SMLR: Limit to 30 days if needed (library handles rate limits better, but keeping logic)
   if (ticker === 'SMLR') {
-    console.log('Overriding SMLR days to 30 to avoid Yahoo Finance rate limits');
+    console.log('Overriding SMLR days to 30');
     days = 30;
   }
-  const endDate = Math.floor(Date.now() / 1000);
-  const startDate = endDate - (days * 24 * 60 * 60);
-  const interval = days > 90 ? '1d' : '1h'; // 1d for longer ranges (>90 days), 1h for shorter
+
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(endDate.getDate() - days);
 
   try {
     // Add delay to avoid rate limits
     await sleep(1000);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+    const queryOptions = {
+      period1: startDate,
+      period2: endDate,
+      interval: (days > 90 ? '1d' : '1h') as '1d' | '1h' | '1m' | '2m' | '5m' | '15m' | '30m' | '90m' | '5d' | '1wk' | '1mo' | '3mo'
+    };
 
-    const response = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${startDate}&period2=${endDate}&interval=${interval}`,
-      {
-        signal: controller.signal,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
-      }
-    );
-    clearTimeout(timeoutId);
+    // Use chart() as historical() is deprecated/mapped
+    const result = await yahooFinance.chart(ticker, queryOptions);
 
-    if (response.ok) {
-      const data = await response.json();
-      const result = data?.chart?.result?.[0];
-      if (result?.timestamp && result?.indicators?.quote?.[0]?.close) {
-        const timestamps = result.timestamp;
-        const closes = result.indicators.quote[0].close;
-        return timestamps
-          .map((ts: number, i: number) => ({
-            timestamp: ts * 1000, // Convert to milliseconds
-            price: closes[i] || 0,
-          }))
-          .filter((d: { price: number }) => d.price > 0);
-      } else {
-        console.warn(`Yahoo Finance data missing for ${ticker}:`, JSON.stringify(data).substring(0, 200));
-      }
+    if (result && result.quotes && result.quotes.length > 0) {
+      return result.quotes
+        .map((quote: any) => ({
+          timestamp: new Date(quote.date).getTime(),
+          price: quote.close || 0,
+        }))
+        .filter((d: { price: number }) => d.price > 0);
     } else {
-      console.warn(`Yahoo Finance API error for ${ticker}: ${response.status} ${response.statusText}`);
-      const text = await response.text();
-      console.warn(`Response body: ${text.substring(0, 500)}`);
+      console.warn(`Yahoo Finance data missing for ${ticker}`);
     }
   } catch (e) {
     console.error(`Error fetching historical data for ${ticker}:`, e);
