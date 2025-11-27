@@ -519,7 +519,7 @@ function Dashboard() {
               unitPriceBtc = closestData.priceBTC;
             }
 
-            point[holding.ticker] = unitPriceBtc;
+            point[holding.ticker] = unitPriceBtc * holding.shares;
 
             if (unitPriceBtc > 0 && holding.shares > 0) {
               totalBtcValue += unitPriceBtc * holding.shares;
@@ -759,10 +759,10 @@ function Dashboard() {
             <div>
               <div>
                 <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
-                  Stack Positions - Unit Price (₿)
+                  Stack Positions - Value (₿)
                 </h2>
                 <p className="text-xs text-gray-400 mt-1">
-                  Showing unit price in Bitcoin for each position in your stack
+                  Showing total value in Bitcoin for each position in your stack
                 </p>
                 {portfolioChartData.length > 0 && (
                   <p className="text-sm text-gray-400 mt-1">
