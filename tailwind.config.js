@@ -9,15 +9,14 @@ export default {
       colors: {
         'btc-orange': '#f7931a',
         'btc-dark': '#0a0a0a',
-        'neon-green': '#00ff41',
-        'neon-orange': '#ff6b35',
-        'neon-green-dark': '#00cc33',
-        'primary': '#FF6719', // Login screen orange
-        'primary-dark': '#E5560E',
+        'apple-green': '#34C759',
+        'apple-red': '#FF3B30',
+        'primary': '#0A84FF', // Apple system blue
+        'primary-dark': '#0066CC',
+        'panel-bg': '#1C1C1E', // Apple dark mode card bg
       },
       boxShadow: {
-        'neon-green': '0 0 10px #00ff41, 0 0 20px #00ff41, 0 0 30px #00ff41',
-        'neon-orange': '0 0 10px #f7931a, 0 0 20px #f7931a, 0 0 30px #f7931a',
+        'premium': '0 4px 24px -1px rgba(0, 0, 0, 0.5), 0 2px 8px -1px rgba(0, 0, 0, 0.4)',
       },
     },
   },

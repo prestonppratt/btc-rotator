@@ -1,0 +1,359 @@
+{
+  "auth": {
+    "user_pool_id": "us-east-1_3ey9GA5ag",
+    "aws_region": "us-east-1",
+    "user_pool_client_id": "75vcc4p0pluo0vgmmdkqlqa93h",
+    "identity_pool_id": "us-east-1:f0cc9be9-a203-400e-9d5e-8818f5db98e8",
+    "mfa_methods": [],
+    "standard_required_attributes": [
+      "email"
+    ],
+    "username_attributes": [
+      "email"
+    ],
+    "user_verification_types": [
+      "email"
+    ],
+    "groups": [],
+    "mfa_configuration": "NONE",
+    "password_policy": {
+      "min_length": 8,
+      "require_lowercase": true,
+      "require_numbers": true,
+      "require_symbols": true,
+      "require_uppercase": true
+    },
+    "unauthenticated_identities_enabled": true
+  },
+  "data": {
+    "url": "https://5s7y5ivqfvdptgqfpwrxmofoly.appsync-api.us-east-1.amazonaws.com/graphql",
+    "aws_region": "us-east-1",
+    "api_key": "da2-cheuh2lc4rd55irll6xzvztimi",
+    "default_authorization_type": "AMAZON_COGNITO_USER_POOLS",
+    "authorization_types": [
+      "API_KEY",
+      "AWS_IAM"
+    ],
+    "model_introspection": {
+      "version": 1,
+      "models": {
+        "User": {
+          "name": "User",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "email": {
+              "name": "email",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "phone": {
+              "name": "phone",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "isPaid": {
+              "name": "isPaid",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": true,
+              "attributes": []
+            },
+            "signupDate": {
+              "name": "signupDate",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "notificationFreq": {
+              "name": "notificationFreq",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "portfolio": {
+              "name": "portfolio",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "tradeHistory": {
+              "name": "tradeHistory",
+              "isArray": false,
+              "type": "AWSJSON",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "Users",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "cognito:username",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "HistoricalPrice": {
+          "name": "HistoricalPrice",
+          "fields": {
+            "ticker": {
+              "name": "ticker",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "timestamp": {
+              "name": "timestamp",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": true,
+              "attributes": []
+            },
+            "priceUSD": {
+              "name": "priceUSD",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": true,
+              "attributes": []
+            },
+            "priceBTC": {
+              "name": "priceBTC",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": true,
+              "attributes": []
+            },
+            "btcPriceUSD": {
+              "name": "btcPriceUSD",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": true,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "HistoricalPrices",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "fields": [
+                  "ticker",
+                  "timestamp"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "allow": "public",
+                    "provider": "iam",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  },
+                  {
+                    "allow": "private",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  },
+                  {
+                    "allow": "public",
+                    "provider": "apiKey",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": true,
+            "primaryKeyFieldName": "ticker",
+            "sortKeyFieldNames": [
+              "timestamp"
+            ]
+          }
+        }
+      },
+      "enums": {},
+      "nonModels": {
+        "GetRotationSignalReturnType": {
+          "name": "GetRotationSignalReturnType",
+          "fields": {
+            "shouldRotate": {
+              "name": "shouldRotate",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": true,
+              "attributes": []
+            },
+            "currentPosition": {
+              "name": "currentPosition",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "newTopTicker": {
+              "name": "newTopTicker",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "newTopScore": {
+              "name": "newTopScore",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": true,
+              "attributes": []
+            },
+            "scoreGap": {
+              "name": "scoreGap",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": true,
+              "attributes": []
+            },
+            "message": {
+              "name": "message",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "expectedAlpha": {
+              "name": "expectedAlpha",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": true,
+              "attributes": []
+            }
+          }
+        }
+      },
+      "queries": {
+        "getRotationSignal": {
+          "name": "getRotationSignal",
+          "isArray": false,
+          "type": {
+            "nonModel": "GetRotationSignalReturnType"
+          },
+          "isRequired": false
+        }
+      },
+      "mutations": {
+        "fetchHistoricalPrices": {
+          "name": "fetchHistoricalPrices",
+          "isArray": false,
+          "type": "String",
+          "isRequired": false,
+          "arguments": {
+            "tickers": {
+              "name": "tickers",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "isArrayNullable": false
+            },
+            "days": {
+              "name": "days",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false
+            }
+          }
+        }
+      }
+    }
+  },
+  "version": "1.4"
+}

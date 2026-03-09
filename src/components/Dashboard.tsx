@@ -630,28 +630,28 @@ function Dashboard() {
         </p>
       </div>
 
-      {/* Huge centered neon card */}
+      {/* High-End Hero Dashboard Card */}
       <div className="flex justify-center">
         <div className="w-full max-w-4xl">
-          <div className="relative glass-panel border-2 sm:border-4 border-primary rounded-xl sm:rounded-2xl p-6 sm:p-8 md:p-12 shadow-2xl shadow-primary/50">
-            {/* Neon glow effect */}
-            <div className="absolute inset-0 bg-primary/10 rounded-xl sm:rounded-2xl blur-xl"></div>
+          <div className="relative overflow-hidden rounded-2xl bg-[#1C1C1E] border border-gray-800 p-8 sm:p-12 md:p-16 shadow-premium transition-all">
+            {/* Subtle mesh background effect */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[#0A84FF]/10 to-transparent opacity-50"></div>
 
-            <div className="relative z-10 text-center">
+            <div className="relative z-10 text-center flex flex-col items-center justify-center min-h-[160px]">
               {rotationLoading ? (
-                <div className="flex flex-col items-center gap-3 sm:gap-4">
+                <div className="flex flex-col items-center gap-4">
                   <LoadingSpinner size="lg" className="border-primary border-t-primary" />
-                  <div className="text-primary text-xl sm:text-2xl md:text-4xl font-bold">
-                    Loading signal...
+                  <div className="text-gray-400 text-lg md:text-xl font-medium tracking-wide">
+                    Analyzing Market Data...
                   </div>
                 </div>
               ) : (
                 <>
-                  <div className="text-primary text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold mb-3 sm:mb-4 md:mb-6 tracking-wide break-words">
+                  <div className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold mb-4 tracking-tight drop-shadow-sm">
                     {displayMessage}
                   </div>
                   {signal?.shouldRotate && (
-                    <div className="text-primary-dark text-sm sm:text-base md:text-lg lg:text-xl mt-3 sm:mt-4">
+                    <div className="text-gray-400 text-base sm:text-lg md:text-xl max-w-2xl mx-auto font-medium">
                       {signal.message.split('\n')[0]}
                     </div>
                   )}
@@ -664,12 +664,12 @@ function Dashboard() {
 
       {/* Alpha Badge */}
       {!backtestLoading && alpha !== 0 && (
-        <div className="flex justify-center">
-          <div className={`px-4 sm:px-6 md:px-8 py-2 sm:py-3 md:py-4 rounded-full text-lg sm:text-2xl md:text-4xl font-bold ${alpha > 0
-            ? 'bg-green-500/20 text-green-400 border-2 border-green-400'
-            : 'bg-red-500/20 text-red-400 border-2 border-red-400'
+        <div className="flex justify-center mt-2">
+          <div className={`px-4 py-1.5 rounded-full text-sm font-semibold tracking-wide border shadow-sm ${alpha > 0
+            ? 'bg-[#34C759]/10 text-[#34C759] border-[#34C759]/30'
+            : 'bg-[#FF3B30]/10 text-[#FF3B30] border-[#FF3B30]/30'
             }`}>
-            {alpha > 0 ? '+' : ''}{alpha.toFixed(2)}% alpha
+            {alpha > 0 ? '+' : ''}{alpha.toFixed(2)}% Alpha vs BTC
           </div>
         </div>
       )}
@@ -677,19 +677,19 @@ function Dashboard() {
 
 
       {/* Recharts Line Chart */}
-      <div className="glass-panel rounded-lg p-3 sm:p-4 md:p-6 shadow-lg">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white text-center sm:text-left">
-            Performance Comparison
+      <div className="bg-[#1C1C1E] border border-gray-800 rounded-xl p-4 sm:p-6 shadow-premium transition-all">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+          <h2 className="text-xl font-semibold text-white tracking-tight">
+            Performance Overview
           </h2>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1 bg-[#2C2C2E] p-1 rounded-lg">
             {(['1mo', '3mo', '6mo', '1y', 'ALL'] as const).map((tf) => (
               <button
                 key={tf}
                 onClick={() => setSelectedPerformanceTimeframe(tf)}
-                className={`px-3 py-1 text-sm rounded transition-colors ${selectedPerformanceTimeframe === tf
-                  ? 'bg-primary text-white font-bold'
-                  : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                className={`px-4 py-1.5 text-sm rounded-md transition-all duration-200 font-medium ${selectedPerformanceTimeframe === tf
+                  ? 'bg-[#3A3A3C] text-white shadow-sm'
+                  : 'text-gray-400 hover:text-white'
                   }`}
               >
                 {tf}
@@ -705,45 +705,58 @@ function Dashboard() {
         ) : filteredChartData.length === 0 ? (
           <div className="text-center py-8 sm:py-12 text-gray-400 text-sm sm:text-base">No backtest data available</div>
         ) : (
-          <ResponsiveContainer width="100%" height={300} className="sm:h-[400px]">
-            <LineChart data={filteredChartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+          <ResponsiveContainer width="100%" height={320} className="sm:h-[400px]">
+            <LineChart data={filteredChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#2C2C2E" vertical={false} />
               <XAxis
                 dataKey="date"
-                stroke="#9CA3AF"
-                style={{ fontSize: '12px' }}
+                stroke="#6B7280"
+                style={{ fontSize: '12px', fontFamily: 'Inter' }}
+                tickLine={false}
+                axisLine={false}
+                dy={10}
               />
               <YAxis
-                stroke="#9CA3AF"
-                style={{ fontSize: '12px' }}
+                stroke="#6B7280"
+                style={{ fontSize: '12px', fontFamily: 'Inter' }}
                 tickFormatter={(value) => `$${value.toLocaleString()}`}
+                tickLine={false}
+                axisLine={false}
+                dx={-10}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                  backdropFilter: 'blur(4px)'
+                  backgroundColor: 'rgba(28, 28, 30, 0.95)',
+                  border: '1px solid #3A3A3C',
+                  borderRadius: '12px',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                  color: '#fff',
+                  fontFamily: 'Inter',
                 }}
+                itemStyle={{ color: '#E5E7EB' }}
                 formatter={(value: number) => `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               />
               <Legend
-                wrapperStyle={{ paddingTop: '20px' }}
+                wrapperStyle={{ paddingTop: '20px', fontFamily: 'Inter', fontSize: '13px' }}
+                iconType="circle"
               />
               <Line
                 type="monotone"
                 dataKey="Rotator Strategy"
-                stroke="#FF6719"
-                strokeWidth={3}
+                stroke="#0A84FF"
+                strokeWidth={2.5}
                 dot={false}
+                activeDot={{ r: 6, strokeWidth: 0, fill: '#0A84FF' }}
                 name="Rotator Strategy"
               />
               <Line
                 type="monotone"
                 dataKey="Hold BTC"
-                stroke="#3B82F6"
-                strokeWidth={3}
+                stroke="#6B7280" // Grayed out baseline benchmark
+                strokeWidth={2}
                 dot={false}
+                activeDot={{ r: 6, strokeWidth: 0, fill: '#6B7280' }}
                 name="Hold BTC"
               />
             </LineChart>
@@ -754,31 +767,28 @@ function Dashboard() {
 
       {/* Portfolio Positions Chart */}
       {portfolioHoldings.length > 0 && (
-        <div className="glass-panel rounded-lg p-3 sm:p-4 md:p-6 shadow-lg">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+        <div className="bg-[#1C1C1E] border border-gray-800 rounded-xl p-4 sm:p-6 shadow-premium transition-all">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <div>
-              <div>
-                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
-                  Stack Positions - Value (₿)
-                </h2>
-                <p className="text-xs text-gray-400 mt-1">
-                  Showing total value in Bitcoin for each position in your stack
-                </p>
+              <h2 className="text-xl font-semibold text-white tracking-tight">
+                Stack Value (₿)
+              </h2>
+              <div className="flex items-baseline gap-2 mt-1">
                 {portfolioChartData.length > 0 && (
-                  <p className="text-sm text-gray-400 mt-1">
-                    Total Stack Value: <span className="text-primary font-semibold">₿{formatBitcoin((portfolioChartData[portfolioChartData.length - 1]?.['Total Stack Value'] as number) || 0)}</span>
-                  </p>
+                  <span className="text-2xl font-bold text-white text-numeric tracking-tight">
+                    ₿{formatBitcoin((portfolioChartData[portfolioChartData.length - 1]?.['Total Stack Value'] as number) || 0)}
+                  </span>
                 )}
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1 bg-[#2C2C2E] p-1 rounded-lg">
               {(['1h', '1d', '1w', '1mo', '3mo', '6mo', '1y', '2y', '5y'] as Timeframe[]).map((tf) => (
                 <button
                   key={tf}
                   onClick={() => setSelectedTimeframe(tf)}
-                  className={`px-3 py-1 text-sm rounded transition-colors ${selectedTimeframe === tf
-                    ? 'bg-primary text-white font-bold'
-                    : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                  className={`px-3 py-1 text-sm rounded-md transition-all duration-200 font-medium ${selectedTimeframe === tf
+                    ? 'bg-[#3A3A3C] text-white shadow-sm'
+                    : 'text-gray-400 hover:text-white'
                     }`}
                 >
                   {tf}
@@ -799,32 +809,40 @@ function Dashboard() {
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={400}>
-              <LineChart data={portfolioChartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <LineChart data={portfolioChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#2C2C2E" vertical={false} />
                 <XAxis
                   dataKey="date"
-                  stroke="#9CA3AF"
-                  style={{ fontSize: '12px' }}
+                  stroke="#6B7280"
+                  style={{ fontSize: '12px', fontFamily: 'Inter' }}
                   angle={-45}
                   textAnchor="end"
                   height={60}
+                  tickLine={false}
+                  axisLine={false}
                 />
                 <YAxis
-                  stroke="#9CA3AF"
-                  style={{ fontSize: '12px' }}
+                  stroke="#6B7280"
+                  style={{ fontSize: '12px', fontFamily: 'Inter' }}
                   tickFormatter={(value) => {
                     if (value === 0) return '₿0';
                     return `₿${formatBitcoin(value)}`;
                   }}
+                  tickLine={false}
+                  axisLine={false}
+                  dx={-10}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
+                    backgroundColor: 'rgba(28, 28, 30, 0.95)',
+                    border: '1px solid #3A3A3C',
+                    borderRadius: '12px',
+                    backdropFilter: 'blur(8px)',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
                     color: '#fff',
-                    backdropFilter: 'blur(4px)'
+                    fontFamily: 'Inter',
                   }}
+                  itemStyle={{ color: '#E5E7EB' }}
                   formatter={(value: number, name: string) => {
                     if (typeof value === 'number' && value > 0) {
                       const displayName = name === 'Total Stack Value'
@@ -836,22 +854,22 @@ function Dashboard() {
                   }}
                 />
                 <Legend
-                  wrapperStyle={{ paddingTop: '20px' }}
+                  wrapperStyle={{ paddingTop: '20px', fontFamily: 'Inter', fontSize: '13px' }}
+                  iconType="circle"
                 />
                 {/* Line for each position showing unit price in BTC */}
                 {portfolioHoldings.map((holding, index) => {
-                  // Generate distinct colors for each position
+                  // Apple-inspired distinct palette
                   const colors = [
-                    '#10B981', // green
-                    '#3B82F6', // blue
-                    '#F59E0B', // amber
-                    '#EF4444', // red
-                    '#8B5CF6', // purple
-                    '#EC4899', // pink
-                    '#06B6D4', // cyan
-                    '#F97316', // orange
-                    '#84CC16', // lime
-                    '#14B8A6', // teal
+                    '#32D74B', // green
+                    '#0A84FF', // blue
+                    '#FF9F0A', // amber
+                    '#FF375F', // red
+                    '#BF5AF2', // purple
+                    '#FF3B30', // sharp red
+                    '#5E5CE6', // indigo
+                    '#30D158', // lime
+                    '#FFCC00', // yellow
                   ];
                   const color = colors[index % colors.length];
 
@@ -863,6 +881,7 @@ function Dashboard() {
                       stroke={color}
                       strokeWidth={2}
                       dot={false}
+                      activeDot={{ r: 5, strokeWidth: 0, fill: color }}
                       name={TICKER_NAMES[holding.ticker as keyof typeof TICKER_NAMES] || holding.ticker}
                       connectNulls={false}
                     />

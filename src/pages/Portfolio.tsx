@@ -309,10 +309,10 @@ function Portfolio() {
   return (
     <div className="min-h-screen text-white p-4 pb-20">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-center text-primary">Stack</h1>
+        <h1 className="text-3xl font-bold mb-8 text-center text-white tracking-tight">Stack</h1>
 
         {/* Action Bar: Add Position & Buttons */}
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 glass-panel p-4 rounded-lg">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-[#1C1C1E] border border-gray-800 p-4 rounded-xl shadow-premium">
           <div className="flex items-center gap-4 w-full md:w-auto">
             <label htmlFor="position-select" className="text-sm font-medium text-gray-300 whitespace-nowrap">
               Add Position:
@@ -324,7 +324,7 @@ function Portfolio() {
                 const ticker = e.target.value;
                 if (ticker) addHolding(ticker);
               }}
-              className="bg-white text-gray-900 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-primary min-w-[200px]"
+              className="bg-[#2C2C2E] text-white border border-gray-700 rounded-lg px-3 py-2 focus:outline-none focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] min-w-[200px]"
             >
               <option value="">Select Asset</option>
               {availableTickers.map((t) => (
@@ -338,14 +338,14 @@ function Portfolio() {
           <div className="flex gap-3 w-full md:w-auto">
             <button
               onClick={loadPortfolio}
-              className="flex-1 md:flex-none px-6 py-2 bg-white/10 text-white font-semibold rounded hover:bg-white/20 transition-colors"
+              className="flex-1 md:flex-none px-6 py-2 bg-[#2C2C2E] text-white font-medium rounded-lg hover:bg-[#3A3A3C] transition-colors border border-gray-700"
             >
               Load Stack
             </button>
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className="flex-1 md:flex-none px-6 py-2 bg-primary text-white font-bold rounded hover:bg-primary-dark disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+              className="flex-1 md:flex-none px-6 py-2 bg-[#0A84FF] text-white font-medium rounded-lg hover:bg-[#0066CC] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
             >
               {isSaving ? <LoadingSpinner size="sm" /> : 'Save Stack'}
             </button>
@@ -353,19 +353,19 @@ function Portfolio() {
         </div>
 
         {/* Holdings List - Responsive Views */}
-        <div className="glass-panel rounded-lg overflow-hidden">
+        <div className="bg-[#1C1C1E] border border-gray-800 rounded-xl overflow-hidden shadow-premium">
           {/* Desktop Table View */}
           <table className="w-full hidden md:table">
             <thead>
-              <tr className="bg-white/5 text-left text-xs uppercase text-gray-400">
-                <th className="px-4 py-3 font-semibold">Asset</th>
-                <th className="px-4 py-3 font-semibold text-right">Quantity</th>
-                <th className="px-4 py-3 font-semibold text-right">Price ({denomination === 'Sats' ? 'Sats' : '₿'})</th>
-                <th className="px-4 py-3 font-semibold text-right">Value ({denomination === 'Sats' ? 'Sats' : '₿'})</th>
-                <th className="px-4 py-3 font-semibold text-center w-16"></th>
+              <tr className="bg-[#2C2C2E] text-left text-xs uppercase tracking-wider text-gray-400">
+                <th className="px-6 py-4 font-medium">Asset</th>
+                <th className="px-6 py-4 font-medium text-right">Quantity</th>
+                <th className="px-6 py-4 font-medium text-right">Price ({denomination === 'Sats' ? 'Sats' : '₿'})</th>
+                <th className="px-6 py-4 font-medium text-right">Value ({denomination === 'Sats' ? 'Sats' : '₿'})</th>
+                <th className="px-6 py-4 font-medium text-center w-16"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-700/50">
+            <tbody className="divide-y divide-gray-800">
               {displayHoldings.length > 0 ? (
                 displayHoldings.map((h) => {
                   const usdPositionValue = h.pricePerShare * h.shares;
@@ -373,14 +373,14 @@ function Portfolio() {
                   const btcPricePerShare = usdToBtc(h.pricePerShare);
 
                   return (
-                    <tr key={h.ticker} className="hover:bg-white/5 transition-colors">
-                      <td className="px-4 py-4">
+                    <tr key={h.ticker} className="hover:bg-[#2C2C2E]/50 transition-colors">
+                      <td className="px-6 py-4">
                         <div className="font-medium text-white">
                           {(TICKER_NAMES as Record<string, string>)[h.ticker] || h.ticker}
                         </div>
                         <div className="text-xs text-gray-500">{h.ticker}</div>
                       </td>
-                      <td className="px-4 py-4 text-right">
+                      <td className="px-6 py-4 text-right">
                         <input
                           type="number"
                           step="any"
@@ -388,12 +388,12 @@ function Portfolio() {
                           value={h.shares || ''}
                           onChange={(e) => updateShares(h.ticker, parseFloat(e.target.value) || 0)}
                           placeholder="0"
-                          className="w-24 text-right bg-black/20 border border-gray-700 rounded px-2 py-1 focus:border-primary focus:outline-none"
+                          className="w-24 text-right bg-[#2C2C2E] border border-gray-700 rounded-md px-2 py-1.5 focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] focus:outline-none text-white appearance-none"
                         />
                       </td>
-                      <td className="px-4 py-4 text-right font-mono text-gray-300">
+                      <td className="px-6 py-4 text-right font-mono text-gray-300">
                         {h.isLoadingPrice ? (
-                          <span className="text-gray-500 text-xs">Loading...</span>
+                          <span className="text-gray-500 text-xs font-sans">Loading...</span>
                         ) : btcPricePerShare > 0 ? (
                           <span>
                             {denomination === 'Sats'
@@ -402,19 +402,19 @@ function Portfolio() {
                             }
                           </span>
                         ) : (
-                          <span className="text-yellow-500 text-xs">N/A</span>
+                          <span className="text-yellow-500 text-xs font-sans">N/A</span>
                         )}
                       </td>
-                      <td className="px-4 py-4 text-right font-mono font-medium text-primary">
+                      <td className="px-6 py-4 text-right font-mono font-medium text-white">
                         {denomination === 'Sats'
                           ? `${(btcPositionValue * 100000000).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                           : `₿${formatBitcoin(btcPositionValue)}`
                         }
                       </td>
-                      <td className="px-4 py-4 text-center">
+                      <td className="px-6 py-4 text-center">
                         <button
                           onClick={() => removeHolding(h.ticker)}
-                          className="text-gray-500 hover:text-red-500 transition-colors p-1 rounded hover:bg-white/10"
+                          className="text-gray-500 hover:text-[#FF3B30] transition-colors p-1.5 rounded-md hover:bg-[#FF3B30]/10"
                           title="Remove position"
                         >
                           <TrashIcon className="h-5 w-5" />
@@ -432,12 +432,12 @@ function Portfolio() {
               )}
             </tbody>
             {displayHoldings.length > 0 && (
-              <tfoot className="bg-white/5 border-t border-gray-700/50">
+              <tfoot className="bg-[#1C1C1E] border-t border-gray-800">
                 <tr>
-                  <td colSpan={3} className="px-4 py-4 text-right font-bold text-gray-300">
+                  <td colSpan={3} className="px-6 py-5 text-right font-medium text-gray-400">
                     Total Stack
                   </td>
-                  <td className="px-4 py-4 text-right font-mono font-bold text-xl text-primary">
+                  <td className="px-6 py-5 text-right font-mono font-semibold text-xl text-white">
                     {denomination === 'Sats'
                       ? `${(totalValue * 100000000).toLocaleString(undefined, { maximumFractionDigits: 0 })} Sats`
                       : `₿${formatBitcoin(totalValue)}`
@@ -458,25 +458,25 @@ function Portfolio() {
                 const btcPricePerShare = usdToBtc(h.pricePerShare);
 
                 return (
-                  <div key={h.ticker} className="bg-white/5 rounded-lg p-4 border border-gray-700/50">
-                    <div className="flex justify-between items-start mb-4">
+                  <div key={h.ticker} className="bg-[#1C1C1E] rounded-xl p-5 border border-gray-800 shadow-sm">
+                    <div className="flex justify-between items-start mb-5">
                       <div>
-                        <div className="font-bold text-lg text-white">
+                        <div className="font-semibold text-lg text-white">
                           {(TICKER_NAMES as Record<string, string>)[h.ticker] || h.ticker}
                         </div>
-                        <div className="text-sm text-gray-500">{h.ticker}</div>
+                        <div className="text-sm text-gray-500 font-medium">{h.ticker}</div>
                       </div>
                       <button
                         onClick={() => removeHolding(h.ticker)}
-                        className="text-gray-500 hover:text-red-500 p-2 -mr-2"
+                        className="text-gray-500 hover:text-[#FF3B30] p-2 -mr-2 rounded-md hover:bg-[#FF3B30]/10 transition-colors"
                       >
                         <TrashIcon className="h-5 w-5" />
                       </button>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       <div className="flex justify-between items-center">
-                        <label className="text-sm text-gray-400">Quantity</label>
+                        <label className="text-sm font-medium text-gray-400">Quantity</label>
                         <input
                           type="number"
                           step="any"
@@ -484,15 +484,15 @@ function Portfolio() {
                           value={h.shares || ''}
                           onChange={(e) => updateShares(h.ticker, parseFloat(e.target.value) || 0)}
                           placeholder="0"
-                          className="w-32 text-right bg-black/20 border border-gray-700 rounded px-3 py-2 focus:border-primary focus:outline-none text-white"
+                          className="w-32 text-right bg-[#2C2C2E] border border-gray-700 rounded-md px-3 py-2 focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] focus:outline-none text-white appearance-none"
                         />
                       </div>
 
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-400">Price ({denomination === 'Sats' ? 'Sats' : '₿'})</span>
+                        <span className="text-sm font-medium text-gray-400">Price ({denomination === 'Sats' ? 'Sats' : '₿'})</span>
                         <span className="font-mono text-gray-300">
                           {h.isLoadingPrice ? (
-                            <span className="text-gray-500 text-xs">Loading...</span>
+                            <span className="text-gray-500 text-xs font-sans">Loading...</span>
                           ) : btcPricePerShare > 0 ? (
                             <span>
                               {denomination === 'Sats'
@@ -501,14 +501,14 @@ function Portfolio() {
                               }
                             </span>
                           ) : (
-                            <span className="text-yellow-500 text-xs">N/A</span>
+                            <span className="text-yellow-500 text-xs font-sans">N/A</span>
                           )}
                         </span>
                       </div>
 
-                      <div className="flex justify-between items-center pt-2 border-t border-gray-700/50">
-                        <span className="text-sm font-medium text-gray-300">Value</span>
-                        <span className="font-mono font-bold text-lg text-primary">
+                      <div className="flex justify-between items-center pt-3 border-t border-gray-800 mt-2">
+                        <span className="text-sm font-medium text-gray-400">Value</span>
+                        <span className="font-mono font-semibold text-lg text-white">
                           {denomination === 'Sats'
                             ? `${(btcPositionValue * 100000000).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                             : `₿${formatBitcoin(btcPositionValue)}`
@@ -527,10 +527,10 @@ function Portfolio() {
 
             {/* Mobile Total Footer */}
             {displayHoldings.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-gray-700">
+              <div className="mt-6 pt-4 border-t border-gray-800">
                 <div className="flex justify-between items-center">
-                  <span className="font-bold text-gray-300">Total Stack</span>
-                  <span className="font-mono font-bold text-xl text-primary">
+                  <span className="font-medium text-gray-400">Total Stack</span>
+                  <span className="font-mono font-semibold text-2xl text-white">
                     {denomination === 'Sats'
                       ? `${(totalValue * 100000000).toLocaleString(undefined, { maximumFractionDigits: 0 })} Sats`
                       : `₿${formatBitcoin(totalValue)}`

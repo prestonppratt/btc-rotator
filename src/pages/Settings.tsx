@@ -125,16 +125,16 @@ function Settings() {
   return (
     <div className="min-h-screen text-white p-4 pb-20">
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-center text-primary">Settings</h1>
+        <h1 className="text-3xl font-bold mb-6 text-center text-white tracking-tight">Settings</h1>
 
-        <div className="space-y-6 glass-panel p-6 rounded-lg">
+        <div className="space-y-6 bg-[#1C1C1E] border border-gray-800 p-6 rounded-xl shadow-premium">
           <div>
             <label className="block text-sm font-medium mb-2">Display Currency</label>
-            <div className="flex bg-gray-800 rounded p-1 w-full sm:w-64">
+            <div className="flex bg-[#2C2C2E] border border-gray-700 rounded-lg p-1 w-full sm:w-64">
               <button
                 onClick={() => setDenomination('BTC')}
-                className={`flex-1 py-2 px-4 rounded text-sm font-medium transition-colors ${denomination === 'BTC'
-                  ? 'bg-primary text-white shadow-md'
+                className={`flex-1 py-1.5 px-4 rounded-md text-sm font-medium transition-all duration-200 ${denomination === 'BTC'
+                  ? 'bg-[#3A3A3C] text-white shadow-sm'
                   : 'text-gray-400 hover:text-white'
                   }`}
               >
@@ -142,8 +142,8 @@ function Settings() {
               </button>
               <button
                 onClick={() => setDenomination('Sats')}
-                className={`flex-1 py-2 px-4 rounded text-sm font-medium transition-colors ${denomination === 'Sats'
-                  ? 'bg-primary text-white shadow-md'
+                className={`flex-1 py-1.5 px-4 rounded-md text-sm font-medium transition-all duration-200 ${denomination === 'Sats'
+                  ? 'bg-[#3A3A3C] text-white shadow-sm'
                   : 'text-gray-400 hover:text-white'
                   }`}
               >
@@ -161,7 +161,7 @@ function Settings() {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder="First Name"
-                className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-primary"
+                className="w-full px-4 py-2 border border-gray-700 bg-[#2C2C2E] rounded-md focus:outline-none focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] text-white transition-all"
               />
             </div>
             <div>
@@ -171,7 +171,7 @@ function Settings() {
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 placeholder="Last Name"
-                className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-primary"
+                className="w-full px-4 py-2 border border-gray-700 bg-[#2C2C2E] rounded-md focus:outline-none focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] text-white transition-all"
               />
             </div>
           </div>
@@ -181,7 +181,7 @@ function Settings() {
             <select
               value={notificationFreq}
               onChange={(e) => setNotificationFreq(e.target.value as NotificationFreq)}
-              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-primary"
+              className="w-full px-4 py-2 border border-gray-700 bg-[#2C2C2E] rounded-md focus:outline-none focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] text-white transition-all"
             >
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
@@ -198,21 +198,21 @@ function Settings() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+1 (555) 123-4567"
-              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-primary"
+              className="w-full px-4 py-2 border border-gray-700 bg-[#2C2C2E] rounded-md focus:outline-none focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] text-white transition-all"
             >
             </input>
             <p className="text-xs text-gray-400 mt-1">Enter your phone number for SMS notifications (format: +1234567890). SMS requires AWS SNS to be configured.</p>
           </div>
 
-          <div className="pt-4 border-t border-gray-700">
-            <h3 className="text-lg font-medium mb-3 text-primary">Data Management</h3>
+          <div className="pt-4 border-t border-gray-800">
+            <h3 className="text-lg font-medium mb-3 text-white">Data Management</h3>
             <p className="text-sm text-gray-400 mb-3">
               Manually trigger a refresh of historical price data from the backend. Use this if charts are empty.
             </p>
             <button
               onClick={handleRefreshData}
               disabled={isRefreshing}
-              className="w-full py-2 bg-gray-700 text-white font-bold rounded hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-2.5 bg-[#2C2C2E] border border-gray-700 text-white font-medium rounded-lg hover:bg-[#3A3A3C] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isRefreshing ? <LoadingSpinner size="sm" /> : 'Refresh Historical Data'}
             </button>
@@ -221,7 +221,7 @@ function Settings() {
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="w-full py-3 bg-primary text-white font-bold rounded hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3.5 bg-[#0A84FF] text-white font-semibold rounded-xl hover:bg-[#0066CC] transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
           >
             {isSaving ? <LoadingSpinner size="sm" /> : 'Save Settings'}
           </button>

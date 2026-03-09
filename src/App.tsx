@@ -26,8 +26,8 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-neon-green text-xl spinner w-12 h-12"></div>
+      <div className="min-h-screen flex items-center justify-center bg-[#0A0A0A]">
+        <div className="spinner w-12 h-12"></div>
       </div>
     );
   }
@@ -61,24 +61,24 @@ function Navigation() {
       <header className="glass-nav sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <Link to="/dashboard" className="text-2xl font-bold text-primary hover:text-primary-dark transition-colors">
-              BTC Rotator
+            <Link to="/dashboard" className="text-xl font-bold text-white tracking-tight flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <span>₿</span> BTC Rotator
             </Link>
-            <nav className="hidden md:flex space-x-6">
+            <nav className="hidden md:flex space-x-1">
               <button
                 onClick={() => handleNav('dashboard', '/dashboard')}
-                className={`px-3 py-2 rounded transition-all duration-300 ${currentPage === 'dashboard'
-                  ? 'text-primary bg-white/5 shadow-[0_0_15px_rgba(255,103,25,0.3)]'
-                  : 'text-gray-400 hover:text-primary hover:bg-white/5'
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${currentPage === 'dashboard'
+                  ? 'bg-[#2C2C2E] text-white shadow-sm'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
                   }`}
               >
                 Dashboard
               </button>
               <button
                 onClick={() => handleNav('stack', '/stack')}
-                className={`px-3 py-2 rounded transition-all duration-300 ${currentPage === 'stack'
-                  ? 'text-primary bg-white/5 shadow-[0_0_15px_rgba(255,103,25,0.3)]'
-                  : 'text-gray-400 hover:text-primary hover:bg-white/5'
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${currentPage === 'stack'
+                  ? 'bg-[#2C2C2E] text-white shadow-sm'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
                   }`}
               >
                 Stack
@@ -87,25 +87,25 @@ function Navigation() {
                 href="https://www.peerrotator.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center px-3 py-2 rounded transition-all duration-300 text-gray-400 hover:text-primary hover:bg-white/5"
+                className="flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-gray-400 hover:text-white hover:bg-white/5"
               >
-                <SiSubstack className="w-4 h-4 mr-1" />
+                <SiSubstack className="w-4 h-4 mr-2" />
                 <span>Substack</span>
               </a>
               <a
                 href="https://chat.whatsapp.com/J485np70u9NBCGbE6rjRKe"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center px-3 py-2 rounded transition-all duration-300 text-gray-400 hover:text-primary hover:bg-white/5"
+                className="flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-gray-400 hover:text-white hover:bg-white/5"
               >
-                <FaWhatsapp className="w-4 h-4 mr-1" />
+                <FaWhatsapp className="w-4 h-4 mr-2" />
                 <span>WhatsApp</span>
               </a>
               <button
                 onClick={() => handleNav('settings', '/settings')}
-                className={`px-3 py-2 rounded transition-all duration-300 ${currentPage === 'settings'
-                  ? 'text-primary bg-white/5 shadow-[0_0_15px_rgba(255,103,25,0.3)]'
-                  : 'text-gray-400 hover:text-primary hover:bg-white/5'
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${currentPage === 'settings'
+                  ? 'bg-[#2C2C2E] text-white shadow-sm'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
                   }`}
               >
                 Settings
@@ -120,7 +120,7 @@ function Navigation() {
                     console.error('Error signing out:', error);
                   }
                 }}
-                className="px-3 py-2 text-sm text-gray-400 hover:text-primary transition-colors"
+                className="px-3 py-1.5 text-sm font-medium text-gray-400 hover:text-white transition-colors bg-white/5 rounded-md hover:bg-[#FF3B30]/20 hover:text-[#FF3B30]"
               >
                 Sign Out
               </button>
@@ -133,25 +133,25 @@ function Navigation() {
       </header >
 
       {/* Mobile Navigation */}
-      < nav className="md:hidden fixed bottom-0 left-0 right-0 glass-nav z-50 pb-safe" >
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 glass-nav z-50 pb-safe">
         <div className="flex justify-around items-center h-16">
           <button
             onClick={() => handleNav('dashboard', '/dashboard')}
-            className={`flex-1 h-full flex items-center justify-center transition-colors ${currentPage === 'dashboard' ? 'text-primary' : 'text-gray-400'
+            className={`flex-1 h-full flex flex-col items-center justify-center transition-colors text-xs font-medium ${currentPage === 'dashboard' ? 'text-white' : 'text-gray-500 hover:text-gray-300'
               }`}
           >
             Dashboard
           </button>
           <button
             onClick={() => handleNav('stack', '/stack')}
-            className={`flex-1 h-full flex items-center justify-center transition-colors ${currentPage === 'stack' ? 'text-primary' : 'text-gray-400'
+            className={`flex-1 h-full flex flex-col items-center justify-center transition-colors text-xs font-medium ${currentPage === 'stack' ? 'text-white' : 'text-gray-500 hover:text-gray-300'
               }`}
           >
             Stack
           </button>
           <button
             onClick={() => handleNav('settings', '/settings')}
-            className={`flex-1 h-full flex items-center justify-center transition-colors ${currentPage === 'settings' ? 'text-primary' : 'text-gray-400'
+            className={`flex-1 h-full flex flex-col items-center justify-center transition-colors text-xs font-medium ${currentPage === 'settings' ? 'text-white' : 'text-gray-500 hover:text-gray-300'
               }`}
           >
             Settings
@@ -164,7 +164,7 @@ function Navigation() {
                 console.error('Error signing out:', error);
               }
             }}
-            className="flex-1 h-full flex items-center justify-center text-gray-400 hover:text-primary"
+            className="flex-1 h-full flex flex-col items-center justify-center text-xs font-medium text-gray-500 hover:text-[#FF3B30]"
           >
             Sign Out
           </button>
@@ -239,8 +239,8 @@ function App() {
   // Show loading while checking auth status
   if (isAuthenticated === null) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-neon-green text-xl spinner w-12 h-12"></div>
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+        <div className="spinner w-12 h-12"></div>
       </div>
     );
   }
@@ -248,7 +248,7 @@ function App() {
   // If not authenticated and auth is enabled, show passwordless sign-in
   if (!isAuthenticated && !authDisabled) {
     return (
-      <div className="relative min-h-screen bg-black">
+      <div className="relative min-h-screen bg-[#0A0A0A]">
         <MurmurationBackground />
         <div className="relative z-20">
           <PasswordlessSignIn onSignIn={() => setIsAuthenticated(true)} />
