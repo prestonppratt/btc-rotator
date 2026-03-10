@@ -5,7 +5,6 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 
 const client = generateClient<Schema>();
-const TRIAL_DAYS = 7;
 const IS_LOCALHOST =
   typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
@@ -44,23 +43,8 @@ export function useAuthGuard() {
           return;
         }
 
-        // In dev, do not block navigation behind paywall checks.
-        if (IS_LOCALHOST) {
-          if (location.pathname === '/upgrade') {
-            navigate('/dashboard', { replace: true });
-          }
-          return;
-        }
-
-        const isPaid = Boolean(userData.isPaid);
-        const signupMs = new Date(userData.signupDate).getTime();
-        const trialExpiryMs = signupMs + TRIAL_DAYS * 24 * 60 * 60 * 1000;
-        const trialExpired = Number.isFinite(signupMs) && Date.now() > trialExpiryMs && !isPaid;
-
-        if (trialExpired && location.pathname !== '/upgrade') {
-          setShouldRedirect(true);
-          navigate('/upgrade', { replace: true });
-        } else if (!trialExpired && location.pathname === '/upgrade') {
+        // Paywall disabled: always route away from upgrade screen.
+        if (IS_LOCALHOST || location.pathname === '/upgrade') {
           navigate('/dashboard', { replace: true });
         }
       } catch {
