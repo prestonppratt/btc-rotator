@@ -8,12 +8,12 @@ export default {
     extend: {
       colors: {
         'btc-orange': '#f7931a',
-        'btc-dark': '#0a0a0a',
+        'btc-dark': '#0F1214',
         'apple-green': '#34C759',
         'apple-red': '#FF3B30',
-        'primary': '#0A84FF', // Apple system blue
-        'primary-dark': '#0066CC',
-        'panel-bg': '#1C1C1E', // Apple dark mode card bg
+        'primary': '#3A86FF',
+        'primary-dark': '#2E6FE0',
+        'panel-bg': '#161A1D',
       },
       boxShadow: {
         'premium': '0 4px 24px -1px rgba(0, 0, 0, 0.5), 0 2px 8px -1px rgba(0, 0, 0, 0.4)',
@@ -22,4 +22,3 @@ export default {
   },
   plugins: [],
 }
-

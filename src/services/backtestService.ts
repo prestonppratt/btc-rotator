@@ -27,11 +27,14 @@ export async function fetchBacktestData(): Promise<BacktestResponse> {
   const today = new Date();
   let rotatorValue = 10000;
   let btcValue = 10000;
-  
-  for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
+
+  let dayIndex = 0;
+  for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1), dayIndex++) {
     const dateStr = d.toISOString().split('T')[0];
-    rotatorValue += (Math.random() - 0.45) * 100; // Slight positive bias
-    btcValue += (Math.random() - 0.5) * 80;
+    const rotatorDelta = 18 + Math.sin(dayIndex / 11) * 42 + Math.cos(dayIndex / 17) * 9;
+    const btcDelta = 12 + Math.sin(dayIndex / 10) * 38 + Math.cos(dayIndex / 14) * 12;
+    rotatorValue += rotatorDelta;
+    btcValue += btcDelta;
     mockData.push({
       date: dateStr,
       rotatorValue: Math.max(5000, rotatorValue),

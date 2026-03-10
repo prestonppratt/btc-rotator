@@ -1,4 +1,3 @@
-import { Amplify } from 'aws-amplify';
 import { generateClient } from 'aws-amplify/data';
 import { getCurrentUser } from 'aws-amplify/auth';
 import type { Schema } from '../../amplify/data/resource';
@@ -99,8 +98,9 @@ export const triggerFetchHistoricalPrices = async (
   try {
     console.log(`Triggering fetchHistoricalPrices for tickers: ${tickers.join(', ')}, days: ${days}`);
 
-    // Use IAM auth (Guest/Public) which has been verified to work
-    const authMode: 'iam' = 'iam';
+    // This mutation is protected; require a signed-in user
+    await getCurrentUser();
+    const authMode = 'userPool' as const;
 
     const response = await client.mutations.fetchHistoricalPrices({
       tickers,

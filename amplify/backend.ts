@@ -5,7 +5,7 @@ import { emailOTPFunction } from './functions/emailOTP/resource';
 import { rotator } from './functions/rotator/resource';
 import { fetchHistoricalPrices } from './functions/fetchHistoricalPrices/resource';
 import { updateHistoricalPrices } from './functions/updateHistoricalPrices/resource';
-import { getHistoricalPrices } from './functions/getHistoricalPrices/resource';
+import { modelEngine } from './functions/modelEngine/resource';
 import { PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
@@ -19,6 +19,7 @@ const backend = defineBackend({
   rotator,
   fetchHistoricalPrices,
   updateHistoricalPrices,
+  modelEngine,
   // getHistoricalPrices,
 });
 
@@ -29,7 +30,7 @@ try {
 
   // Create EventBridge rule to trigger daily at midnight UTC
   const dailyUpdateRule = new Rule(backend.stack, 'DailyPriceUpdateRule', {
-    schedule: Schedule.cron({ minute: '0' }),
+    schedule: Schedule.cron({ minute: '0', hour: '0' }),
     description: 'Daily update of historical price data',
   });
 
@@ -107,4 +108,23 @@ try {
   }
 } catch (error) {
   console.warn('Could not add DynamoDB permissions:', error);
+}
+
+// Grant read permissions/env to model engine
+try {
+  const engineLambda = backend.modelEngine.resources.lambda;
+  const historicalTable = backend.data.resources.tables['HistoricalPrice'];
+  const userTable = backend.data.resources.tables['User'];
+
+  if (historicalTable) {
+    (engineLambda as Function).addEnvironment('AMPLIFY_DATA_TABLE_NAME_HISTORICALPRICE', historicalTable.tableName);
+    historicalTable.grantReadData(engineLambda);
+  }
+
+  if (userTable) {
+    (engineLambda as Function).addEnvironment('AMPLIFY_DATA_TABLE_NAME_USER', userTable.tableName);
+    userTable.grantReadData(engineLambda);
+  }
+} catch (error) {
+  console.warn('Could not add model engine permissions:', error);
 }

@@ -6,7 +6,10 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "test": "TSX_DISABLE_IPC=1 node --import tsx --test tests/*.test.mjs tests/*.test.ts",
+    "backfill:plan": "node backfill_missing_history.mjs",
+    "backfill:run": "node backfill_missing_history.mjs --execute"
   },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.0.0",

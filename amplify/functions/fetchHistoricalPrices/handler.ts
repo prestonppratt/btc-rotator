@@ -6,7 +6,6 @@ import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda';
 // Force rebuild - added createdAt/updatedAt fields
 
 const dynamoClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const lambdaClient = new LambdaClient({});
 
 interface HistoricalPrice {
   ticker: string;
@@ -188,7 +187,7 @@ export const handler: Handler = async (event, _context) => {
 
   const args = event.arguments || {};
   const allTickers = args.tickers || [
-    'BTC-USD', 'MSTR', 'SMLR', 'ASST', 'FBTC', 'MARA', 'RIOT', 'COIN',
+    'BTC-USD', 'MSTR', 'ASST', 'FBTC', 'MARA', 'RIOT', 'COIN',
     'HUT', 'CLSK', 'BITF', 'WULF', 'CORZ', 'IREN', 'CIFR', 'BTBT',
   ];
   const days = args.days || 365;
@@ -214,7 +213,7 @@ export const handler: Handler = async (event, _context) => {
   console.log(`Processing batch: ${currentBatch.join(', ')}`);
 
   // ---- Fetch Bitcoin once (needed for all tickers) ----
-  const btcHistorical = await fetchBitcoinHistorical(days);
+  const btcHistorical = await fetchBitcoinHistorical(safeDays);
   if (btcHistorical.length === 0) {
     throw new Error('Failed to fetch Bitcoin historical data');
   }
@@ -235,12 +234,12 @@ export const handler: Handler = async (event, _context) => {
     if (ticker === 'BTC-USD') {
       hist = btcHistorical;
     } else {
-      hist = await fetchStockHistorical(ticker, days);
+      hist = await fetchStockHistorical(ticker, safeDays);
     }
     console.log(`Fetched ${hist.length} points for ${ticker}`);
     for (const { timestamp, price } of hist) {
       let btcPrice = 0;
-      const maxDiff = days <= 1 ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+      const maxDiff = safeDays <= 1 ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
       if (btcPriceMap.has(timestamp)) {
         btcPrice = btcPriceMap.get(timestamp)!;
       } else {
@@ -277,7 +276,7 @@ export const handler: Handler = async (event, _context) => {
     const payload = {
       arguments: {
         tickers: allTickers,
-        days,
+        days: safeDays,
         remainingTickers: nextBatch,
       },
     };
@@ -295,4 +294,3 @@ export const handler: Handler = async (event, _context) => {
 
   return `Batch processed: ${currentBatch.join(', ')}`;
 };
-

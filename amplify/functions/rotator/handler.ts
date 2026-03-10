@@ -10,7 +10,7 @@ export const handler: Handler = async (event, context) => {
     newTopTicker: 'BTC-USD',
     newTopScore: 0.5,
     scoreGap: 0,
-    message: 'HOLD – no new signal (Backend connected)',
+    message: 'HOLD – no new signal (using fallback rotation stub)',
     expectedAlpha: 0,
   };
 };

@@ -7,7 +7,9 @@ import '@aws-amplify/ui-react/styles.css';
 import { PasswordlessSignIn } from './components/PasswordlessSignIn';
 import Dashboard from './components/Dashboard';
 import Portfolio from './pages/Portfolio';
+import Quant from './pages/Quant';
 import Settings from './pages/Settings';
+import RecommendationHistory from './pages/RecommendationHistory';
 import Upgrade from './pages/Upgrade';
 import Disclaimer from './pages/Disclaimer';
 import Footer from './components/Footer';
@@ -18,7 +20,7 @@ import { SiSubstack } from 'react-icons/si';
 import { DenominationProvider } from './contexts/DenominationContext';
 
 
-type Page = 'dashboard' | 'stack' | 'settings';
+type Page = 'dashboard' | 'stack' | 'quant' | 'recommendations' | 'settings';
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { isLoading } = useAuthGuard();
@@ -45,6 +47,10 @@ function Navigation() {
       setCurrentPage('dashboard');
     } else if (location.pathname === '/stack') {
       setCurrentPage('stack');
+    } else if (location.pathname === '/quant') {
+      setCurrentPage('quant');
+    } else if (location.pathname === '/recommendations') {
+      setCurrentPage('recommendations');
     } else if (location.pathname === '/settings') {
       setCurrentPage('settings');
     }
@@ -72,7 +78,7 @@ function Navigation() {
                   : 'text-gray-400 hover:text-white hover:bg-white/5'
                   }`}
               >
-                Dashboard
+                Command Deck
               </button>
               <button
                 onClick={() => handleNav('stack', '/stack')}
@@ -83,6 +89,15 @@ function Navigation() {
               >
                 Stack
               </button>
+              <button
+                onClick={() => handleNav('quant', '/quant')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${currentPage === 'quant'
+                  ? 'bg-[#2C2C2E] text-white shadow-sm'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+              >
+                Quant
+              </button>
               <a
                 href="https://www.peerrotator.com"
                 target="_blank"
@@ -90,7 +105,7 @@ function Navigation() {
                 className="flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-gray-400 hover:text-white hover:bg-white/5"
               >
                 <SiSubstack className="w-4 h-4 mr-2" />
-                <span>Substack</span>
+                <span>Peer Rotator</span>
               </a>
               <a
                 href="https://chat.whatsapp.com/J485np70u9NBCGbE6rjRKe"
@@ -109,6 +124,15 @@ function Navigation() {
                   }`}
               >
                 Settings
+              </button>
+              <button
+                onClick={() => handleNav('recommendations', '/recommendations')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${currentPage === 'recommendations'
+                  ? 'bg-[#2C2C2E] text-white shadow-sm'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+              >
+                History
               </button>
             </nav>
             <div className="hidden md:flex items-center space-x-4">
@@ -140,7 +164,7 @@ function Navigation() {
             className={`flex-1 h-full flex flex-col items-center justify-center transition-colors text-xs font-medium ${currentPage === 'dashboard' ? 'text-white' : 'text-gray-500 hover:text-gray-300'
               }`}
           >
-            Dashboard
+            Command Deck
           </button>
           <button
             onClick={() => handleNav('stack', '/stack')}
@@ -148,6 +172,20 @@ function Navigation() {
               }`}
           >
             Stack
+          </button>
+          <button
+            onClick={() => handleNav('quant', '/quant')}
+            className={`flex-1 h-full flex flex-col items-center justify-center transition-colors text-xs font-medium ${currentPage === 'quant' ? 'text-white' : 'text-gray-500 hover:text-gray-300'
+              }`}
+          >
+            Quant
+          </button>
+          <button
+            onClick={() => handleNav('recommendations', '/recommendations')}
+            className={`flex-1 h-full flex flex-col items-center justify-center transition-colors text-xs font-medium ${currentPage === 'recommendations' ? 'text-white' : 'text-gray-500 hover:text-gray-300'
+              }`}
+          >
+            History
           </button>
           <button
             onClick={() => handleNav('settings', '/settings')}
@@ -188,6 +226,8 @@ function AppContent() {
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/stack" element={<Portfolio />} />
+                <Route path="/quant" element={<Quant />} />
+                <Route path="/recommendations" element={<RecommendationHistory />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/upgrade" element={<Upgrade />} />
                 <Route path="/disclaimer" element={<Disclaimer />} />

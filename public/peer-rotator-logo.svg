@@ -1,0 +1,23 @@
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Peer Rotator logo">
+  <defs>
+    <linearGradient id="bg" x1="140" y1="110" x2="1030" y2="1080" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1C2126"/>
+      <stop offset="1" stop-color="#0F1214"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="230" y1="290" x2="970" y2="810" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3A86FF"/>
+      <stop offset="1" stop-color="#2E6FE0"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="40" y="40" width="1120" height="1120" rx="220" fill="url(#bg)" stroke="#2D333B" stroke-width="8"/>
+
+  <circle cx="600" cy="470" r="255" stroke="url(#ring)" stroke-width="28" opacity="0.95"/>
+  <path d="M853 470C853 610 740 723 600 723" stroke="#3A86FF" stroke-width="28" stroke-linecap="round"/>
+  <path d="M853 468L817 505L816 430" stroke="#3A86FF" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <text x="600" y="505" text-anchor="middle" fill="#F0F2F5" font-family="Inter, Arial, sans-serif" font-size="220" font-weight="700">PR</text>
+
+  <text x="600" y="885" text-anchor="middle" fill="#F0F2F5" font-family="Playfair Display, Georgia, serif" font-size="92" font-weight="600">Peer Rotator</text>
+  <text x="600" y="952" text-anchor="middle" fill="#8B949E" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="500" letter-spacing="10">BITCOIN ROTATION LETTER</text>
+</svg>

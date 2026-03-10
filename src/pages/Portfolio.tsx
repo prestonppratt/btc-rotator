@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useQuery, useQueries } from '@tanstack/react-query';
 import { SUPPORTED_TICKERS, TICKER_NAMES } from '../constants/tickers';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -7,15 +7,70 @@ import { TrashIcon } from '@heroicons/react/24/outline';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 import { useDenomination } from '../contexts/DenominationContext';
+import { getPortfolioStorageKeys, getPrimaryPortfolioStorageKey } from '../utils/userStorage';
 
 const client = generateClient<Schema>();
 
 interface Holding {
   ticker: string;
   shares: number;
-  pricePerShare: number;
+  pricePerShare: number; // Average cost basis in USD
   isLoadingPrice?: boolean;
 }
+
+interface DisplayHolding extends Holding {
+  currentPriceUSD: number;
+}
+
+interface PortfolioTransaction {
+  id: string;
+  ticker: string;
+  type: 'BUY' | 'SELL';
+  quantity: number;
+  priceUSD: number;
+  timestamp: number;
+}
+
+type SortKey =
+  | 'symbol'
+  | 'lastPrice'
+  | 'currentValue'
+  | 'accountPct'
+  | 'quantity'
+  | 'avgCost'
+  | 'costBasisTotal'
+  | 'gainLoss'
+  | 'gainLossPct';
+
+type SortDirection = 'asc' | 'desc';
+
+interface SortConfig {
+  key: SortKey;
+  direction: SortDirection;
+}
+
+type ColumnId =
+  | 'symbol'
+  | 'lastPrice'
+  | 'currentValue'
+  | 'accountPct'
+  | 'quantity'
+  | 'avgCost'
+  | 'costBasisTotal'
+  | 'gainLoss'
+  | 'gainLossPct';
+
+const DEFAULT_COLUMN_ORDER: ColumnId[] = [
+  'symbol',
+  'lastPrice',
+  'currentValue',
+  'accountPct',
+  'quantity',
+  'avgCost',
+  'costBasisTotal',
+  'gainLoss',
+  'gainLossPct',
+];
 
 // Helper to fetch Bitcoin price from CoinGecko API
 const fetchBitcoinPrice = async (): Promise<number> => {
@@ -117,18 +172,20 @@ const formatBitcoin = (value: number): string => {
 
 function Portfolio() {
   const { denomination } = useDenomination();
-  const [availableTickers, setAvailableTickers] = useState<string[]>([...SUPPORTED_TICKERS]);
-  const [selectedTicker, setSelectedTicker] = useState<string>('');
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [bitcoinPrice, setBitcoinPrice] = useState<number>(0);
-  const holdingsRef = useRef<Holding[]>([]);
-
-  // Keep ref in sync with state
-  useEffect(() => {
-    holdingsRef.current = holdings;
-  }, [holdings]);
+  const [selectedAssetsToAdd, setSelectedAssetsToAdd] = useState<string[]>([]);
+  const [transactions, setTransactions] = useState<PortfolioTransaction[]>([]);
+  const [txTicker, setTxTicker] = useState<string>('BTC-USD');
+  const [txType, setTxType] = useState<'BUY' | 'SELL'>('BUY');
+  const [txQuantity, setTxQuantity] = useState<string>('');
+  const [txPriceUSD, setTxPriceUSD] = useState<string>('');
+  const [txDate, setTxDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'currentValue', direction: 'desc' });
+  const [columnOrder, setColumnOrder] = useState<ColumnId[]>(DEFAULT_COLUMN_ORDER);
+  const [draggedColumn, setDraggedColumn] = useState<ColumnId | null>(null);
 
   // Fetch Bitcoin price using useQuery
   const { data: btcPriceData } = useQuery({
@@ -157,22 +214,24 @@ function Portfolio() {
   });
 
   // Derive display holdings by merging state with query data
-  const displayHoldings = useMemo(() => {
+  const displayHoldings: DisplayHolding[] = useMemo(() => {
     return holdings.map((h, index) => {
       const query = priceQueries[index];
       const livePrice = query?.data;
       const isLoading = query?.isLoading;
 
-      // Use live price if available, otherwise fallback to stored price
-      const priceToUse = (livePrice && livePrice > 0) ? livePrice : h.pricePerShare;
-
       return {
         ...h,
-        pricePerShare: priceToUse,
-        isLoadingPrice: isLoading && !priceToUse, // Only show loading if we have no price at all
+        currentPriceUSD: (livePrice && livePrice > 0) ? livePrice : 0,
+        isLoadingPrice: Boolean(isLoading) && !(livePrice && livePrice > 0), // Only show loading if we have no live price
       };
     });
   }, [holdings, priceQueries]);
+
+  const availableTickers = useMemo(
+    () => SUPPORTED_TICKERS.filter((ticker) => !holdings.some((h) => h.ticker === ticker)),
+    [holdings]
+  );
 
   // Convert USD price to Bitcoin price
   const usdToBtc = (usdPrice: number): number => {
@@ -183,41 +242,193 @@ function Portfolio() {
   };
 
   // Functions to add and remove holdings
-  const addHolding = async (ticker: string) => {
-    if (!ticker || holdings.find((h) => h.ticker === ticker)) {
-      setSelectedTicker('');
+  const addSelectedHoldings = () => {
+    if (selectedAssetsToAdd.length === 0) {
       return;
     }
-    const newHolding: Holding = { ticker, shares: 0, pricePerShare: 0, isLoadingPrice: true };
-    setHoldings([...holdings, newHolding]);
-    setAvailableTickers((prev) => prev.filter((t) => t !== ticker));
-    setSelectedTicker('');
+    const holdingsToAdd: Holding[] = selectedAssetsToAdd
+      .filter((ticker) => !holdings.some((h) => h.ticker === ticker))
+      .map((ticker) => ({
+        ticker,
+        shares: 0,
+        pricePerShare: 0,
+        isLoadingPrice: true,
+      }));
+
+    if (holdingsToAdd.length === 0) {
+      setSelectedAssetsToAdd([]);
+      return;
+    }
+
+    setHoldings([...holdings, ...holdingsToAdd]);
+    setSelectedAssetsToAdd([]);
   };
 
   const removeHolding = (ticker: string) => {
     setHoldings(holdings.filter((h) => h.ticker !== ticker));
-    setAvailableTickers((prev) => [...prev, ticker].sort());
   };
 
   const updateShares = (ticker: string, shares: number) => {
     setHoldings(holdings.map((h) => (h.ticker === ticker ? { ...h, shares } : h)));
   };
 
+  const updateAvgCost = (ticker: string, avgCost: number) => {
+    setHoldings(holdings.map((h) => (h.ticker === ticker ? { ...h, pricePerShare: avgCost } : h)));
+  };
+
   // Calculate total value in Bitcoin using displayHoldings
   const totalValue = displayHoldings.reduce((sum, h) => {
-    const usdValue = h.pricePerShare * h.shares;
+    const usdValue = h.currentPriceUSD * h.shares;
     return sum + usdToBtc(usdValue);
   }, 0);
+
+  const totalValueUSD = displayHoldings.reduce((sum, h) => sum + (h.currentPriceUSD * h.shares), 0);
+
+  const portfolioRows = useMemo(() => {
+    return displayHoldings.map((h) => {
+      const currentValue = h.currentPriceUSD * h.shares;
+      const costBasisTotal = h.pricePerShare * h.shares;
+      const gainLoss = currentValue - costBasisTotal;
+      const gainLossPct = costBasisTotal > 0 ? (gainLoss / costBasisTotal) * 100 : 0;
+      const accountPct = totalValueUSD > 0 ? (currentValue / totalValueUSD) * 100 : 0;
+
+      return {
+        ...h,
+        currentValue,
+        costBasisTotal,
+        gainLoss,
+        gainLossPct,
+        accountPct,
+      };
+    });
+  }, [displayHoldings, totalValueUSD]);
+
+  const sortedPortfolioRows = useMemo(() => {
+    const rows = [...portfolioRows];
+    const directionMultiplier = sortConfig.direction === 'asc' ? 1 : -1;
+
+    rows.sort((a, b) => {
+      switch (sortConfig.key) {
+        case 'symbol':
+          return a.ticker.localeCompare(b.ticker) * directionMultiplier;
+        case 'lastPrice':
+          return (a.currentPriceUSD - b.currentPriceUSD) * directionMultiplier;
+        case 'currentValue':
+          return (a.currentValue - b.currentValue) * directionMultiplier;
+        case 'accountPct':
+          return (a.accountPct - b.accountPct) * directionMultiplier;
+        case 'quantity':
+          return (a.shares - b.shares) * directionMultiplier;
+        case 'avgCost':
+          return (a.pricePerShare - b.pricePerShare) * directionMultiplier;
+        case 'costBasisTotal':
+          return (a.costBasisTotal - b.costBasisTotal) * directionMultiplier;
+        case 'gainLoss':
+          return (a.gainLoss - b.gainLoss) * directionMultiplier;
+        case 'gainLossPct':
+          return (a.gainLossPct - b.gainLossPct) * directionMultiplier;
+        default:
+          return 0;
+      }
+    });
+
+    return rows;
+  }, [portfolioRows, sortConfig]);
+
+  const handleSort = (key: SortKey) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      return { key, direction: 'desc' };
+    });
+  };
+
+  const sortIndicator = (key: SortKey) => {
+    if (sortConfig.key !== key) return '↕';
+    return sortConfig.direction === 'asc' ? '↑' : '↓';
+  };
+
+  const onHeaderDragStart = (column: ColumnId) => {
+    setDraggedColumn(column);
+  };
+
+  const onHeaderDrop = (targetColumn: ColumnId) => {
+    if (!draggedColumn || draggedColumn === targetColumn) return;
+
+    setColumnOrder((prev) => {
+      const next = [...prev];
+      const from = next.indexOf(draggedColumn);
+      const to = next.indexOf(targetColumn);
+      if (from < 0 || to < 0) return prev;
+      next.splice(from, 1);
+      next.splice(to, 0, draggedColumn);
+      return next;
+    });
+    setDraggedColumn(null);
+  };
+
+  const getColumnLabel = (column: ColumnId): string => {
+    switch (column) {
+      case 'symbol': return 'Symbol';
+      case 'lastPrice': return 'Last Price';
+      case 'currentValue': return 'Current Value';
+      case 'accountPct': return '% Account';
+      case 'quantity': return 'Quantity';
+      case 'avgCost': return 'Avg Cost Basis';
+      case 'costBasisTotal': return 'Cost Basis Total';
+      case 'gainLoss': return 'Total Gain/Loss $';
+      case 'gainLossPct': return 'Total Gain/Loss %';
+      default: return '';
+    }
+  };
+
+  const formatUSD = (value: number): string =>
+    `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const formatPercent = (value: number): string =>
+    `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+
+  const addTransaction = () => {
+    const quantity = parseFloat(txQuantity);
+    const priceUSD = parseFloat(txPriceUSD);
+    const timestamp = new Date(txDate).getTime();
+
+    if (!txTicker || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(priceUSD) || priceUSD <= 0 || !Number.isFinite(timestamp)) {
+      setMessage({ type: 'error', text: 'Enter a valid transaction (ticker, quantity, price, date).' });
+      return;
+    }
+
+    const tx: PortfolioTransaction = {
+      id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      ticker: txTicker,
+      type: txType,
+      quantity,
+      priceUSD,
+      timestamp,
+    };
+
+    setTransactions((prev) => [tx, ...prev].sort((a, b) => b.timestamp - a.timestamp));
+    setTxQuantity('');
+    setTxPriceUSD('');
+    setMessage({ type: 'success', text: 'Transaction added. Save portfolio to persist it.' });
+  };
+
+  const removeTransaction = (id: string) => {
+    setTransactions((prev) => prev.filter((tx) => tx.id !== id));
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
     setMessage(null);
     try {
       const user = await getCurrentUser();
-      const email = user.signInDetails?.loginId || ((user as any)?.attributes?.email as string) || 'guest';
-
-      // Use displayHoldings to save the latest prices
-      const holdingsToSave = displayHoldings.map(({ isLoadingPrice, ...h }) => h);
+      // Save user-entered portfolio ledger values (quantity + average cost basis)
+      const holdingsToSave = holdings.map(({ ticker, shares, pricePerShare }) => ({
+        ticker,
+        shares,
+        pricePerShare,
+      }));
 
       // Check if user exists
       const userData = await client.models.User.get({ id: user.userId });
@@ -226,22 +437,24 @@ function Portfolio() {
         // Update existing user
         await client.models.User.update({
           id: user.userId,
-          portfolio: JSON.stringify(holdingsToSave)
+          portfolio: JSON.stringify(holdingsToSave),
+          tradeHistory: JSON.stringify(transactions),
         });
       } else {
         // Create new user record
         await client.models.User.create({
           id: user.userId,
-          email: email,
+          email: user.signInDetails?.loginId || user.username || user.userId,
           signupDate: new Date().toISOString(),
           notificationFreq: 'weekly', // Default
           portfolio: JSON.stringify(holdingsToSave),
+          tradeHistory: JSON.stringify(transactions),
           isPaid: false
         });
       }
 
       // Also save to local storage as backup/cache
-      localStorage.setItem(`portfolio_${email}`, JSON.stringify(holdingsToSave));
+      localStorage.setItem(getPrimaryPortfolioStorageKey(user), JSON.stringify(holdingsToSave));
 
       // Dispatch custom event to notify Dashboard
       window.dispatchEvent(new Event('portfolioUpdated'));
@@ -261,6 +474,7 @@ function Portfolio() {
       // Try loading from backend first
       const userData = await client.models.User.get({ id: user.userId });
       let loadedHoldings: Holding[] | null = null;
+      let loadedTransactions: PortfolioTransaction[] = [];
 
       if (userData.data?.portfolio) {
         // Backend has data
@@ -269,12 +483,38 @@ function Portfolio() {
         } else {
           loadedHoldings = userData.data.portfolio as unknown as Holding[];
         }
+        if (userData.data.tradeHistory) {
+          const parsed = typeof userData.data.tradeHistory === 'string'
+            ? JSON.parse(userData.data.tradeHistory)
+            : userData.data.tradeHistory;
+          if (Array.isArray(parsed)) {
+            loadedTransactions = parsed
+              .map((tx: any): PortfolioTransaction => ({
+                id: String(tx.id || `${tx.ticker}_${tx.timestamp}`),
+                ticker: String(tx.ticker || ''),
+                type: tx.type === 'SELL' ? 'SELL' : 'BUY',
+                quantity: Number(tx.quantity || 0),
+                priceUSD: Number(tx.priceUSD || 0),
+                timestamp: Number(tx.timestamp || 0),
+              }))
+              .filter((tx: PortfolioTransaction) =>
+                Boolean(tx.ticker) &&
+                SUPPORTED_TICKERS.includes(tx.ticker as any) &&
+                tx.quantity > 0 &&
+                tx.priceUSD > 0 &&
+                tx.timestamp > 0
+              )
+              .sort((a: PortfolioTransaction, b: PortfolioTransaction) => b.timestamp - a.timestamp);
+          }
+        }
       } else {
         // Fallback to local storage if backend is empty
-        const email = ((user as any)?.attributes?.email as string) || 'guest';
-        const saved = localStorage.getItem(`portfolio_${email}`);
-        if (saved) {
-          loadedHoldings = JSON.parse(saved);
+        for (const storageKey of getPortfolioStorageKeys(user)) {
+          const saved = localStorage.getItem(storageKey);
+          if (saved) {
+            loadedHoldings = JSON.parse(saved);
+            break;
+          }
         }
       }
 
@@ -282,15 +522,12 @@ function Portfolio() {
         // Migrate old format to new format
         const migrated = loadedHoldings.map(h => ({
           ...h,
-          pricePerShare: (h as any).pricePerShare ?? 0,
+          pricePerShare: Number((h as any).pricePerShare ?? 0),
+          shares: Number((h as any).shares ?? 0),
           isLoadingPrice: false
-        }));
+        })).filter((h) => SUPPORTED_TICKERS.includes(h.ticker as any));
         setHoldings(migrated);
-        // Update available tickers
-        setAvailableTickers(prev => {
-          const used = migrated.map(h => h.ticker);
-          return SUPPORTED_TICKERS.filter(t => !used.includes(t));
-        });
+        setTransactions(loadedTransactions);
         setMessage({ type: 'success', text: 'Stack loaded from cloud.' });
       } else {
         setMessage({ type: 'error', text: 'No saved stack found.' });
@@ -308,237 +545,387 @@ function Portfolio() {
 
   return (
     <div className="min-h-screen text-white p-4 pb-20">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-center text-white tracking-tight">Stack</h1>
+      <div className="max-w-[1400px] mx-auto">
+        <h1 className="text-3xl font-bold mb-6 text-white tracking-tight">Portfolio</h1>
 
-        {/* Action Bar: Add Position & Buttons */}
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-[#1C1C1E] border border-gray-800 p-4 rounded-xl shadow-premium">
-          <div className="flex items-center gap-4 w-full md:w-auto">
-            <label htmlFor="position-select" className="text-sm font-medium text-gray-300 whitespace-nowrap">
-              Add Position:
-            </label>
-            <select
-              id="position-select"
-              value={selectedTicker}
-              onChange={(e) => {
-                const ticker = e.target.value;
-                if (ticker) addHolding(ticker);
-              }}
-              className="bg-[#2C2C2E] text-white border border-gray-700 rounded-lg px-3 py-2 focus:outline-none focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] min-w-[200px]"
-            >
-              <option value="">Select Asset</option>
-              {availableTickers.map((t) => (
-                <option key={t} value={t}>
-                  {(TICKER_NAMES as Record<string, string>)[t] || t}
-                </option>
-              ))}
-            </select>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
+          <div className="bg-[#1C1C1E] border border-gray-800 rounded-xl p-4">
+            <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Current Value</div>
+            <div className="text-2xl font-semibold text-white">{formatUSD(totalValueUSD)}</div>
           </div>
-
-          <div className="flex gap-3 w-full md:w-auto">
-            <button
-              onClick={loadPortfolio}
-              className="flex-1 md:flex-none px-6 py-2 bg-[#2C2C2E] text-white font-medium rounded-lg hover:bg-[#3A3A3C] transition-colors border border-gray-700"
-            >
-              Load Stack
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex-1 md:flex-none px-6 py-2 bg-[#0A84FF] text-white font-medium rounded-lg hover:bg-[#0066CC] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-            >
-              {isSaving ? <LoadingSpinner size="sm" /> : 'Save Stack'}
-            </button>
+          <div className="bg-[#1C1C1E] border border-gray-800 rounded-xl p-4">
+            <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">BTC Value</div>
+            <div className="text-2xl font-semibold text-white">
+              {denomination === 'Sats'
+                ? `${(totalValue * 100000000).toLocaleString(undefined, { maximumFractionDigits: 0 })} sats`
+                : `₿${formatBitcoin(totalValue)}`
+              }
+            </div>
+          </div>
+          <div className="bg-[#1C1C1E] border border-gray-800 rounded-xl p-4">
+            <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Positions</div>
+            <div className="text-2xl font-semibold text-white">{displayHoldings.length}</div>
           </div>
         </div>
 
-        {/* Holdings List - Responsive Views */}
         <div className="bg-[#1C1C1E] border border-gray-800 rounded-xl overflow-hidden shadow-premium">
-          {/* Desktop Table View */}
-          <table className="w-full hidden md:table">
-            <thead>
-              <tr className="bg-[#2C2C2E] text-left text-xs uppercase tracking-wider text-gray-400">
-                <th className="px-6 py-4 font-medium">Asset</th>
-                <th className="px-6 py-4 font-medium text-right">Quantity</th>
-                <th className="px-6 py-4 font-medium text-right">Price ({denomination === 'Sats' ? 'Sats' : '₿'})</th>
-                <th className="px-6 py-4 font-medium text-right">Value ({denomination === 'Sats' ? 'Sats' : '₿'})</th>
-                <th className="px-6 py-4 font-medium text-center w-16"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-800">
-              {displayHoldings.length > 0 ? (
-                displayHoldings.map((h) => {
-                  const usdPositionValue = h.pricePerShare * h.shares;
-                  const btcPositionValue = usdToBtc(usdPositionValue);
-                  const btcPricePerShare = usdToBtc(h.pricePerShare);
-
-                  return (
-                    <tr key={h.ticker} className="hover:bg-[#2C2C2E]/50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="font-medium text-white">
-                          {(TICKER_NAMES as Record<string, string>)[h.ticker] || h.ticker}
-                        </div>
-                        <div className="text-xs text-gray-500">{h.ticker}</div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <input
-                          type="number"
-                          step="any"
-                          min="0"
-                          value={h.shares || ''}
-                          onChange={(e) => updateShares(h.ticker, parseFloat(e.target.value) || 0)}
-                          placeholder="0"
-                          className="w-24 text-right bg-[#2C2C2E] border border-gray-700 rounded-md px-2 py-1.5 focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] focus:outline-none text-white appearance-none"
-                        />
-                      </td>
-                      <td className="px-6 py-4 text-right font-mono text-gray-300">
-                        {h.isLoadingPrice ? (
-                          <span className="text-gray-500 text-xs font-sans">Loading...</span>
-                        ) : btcPricePerShare > 0 ? (
-                          <span>
-                            {denomination === 'Sats'
-                              ? `${(btcPricePerShare * 100000000).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                              : `₿${formatBitcoin(btcPricePerShare)}`
-                            }
-                          </span>
-                        ) : (
-                          <span className="text-yellow-500 text-xs font-sans">N/A</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right font-mono font-medium text-white">
-                        {denomination === 'Sats'
-                          ? `${(btcPositionValue * 100000000).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                          : `₿${formatBitcoin(btcPositionValue)}`
-                        }
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <button
-                          onClick={() => removeHolding(h.ticker)}
-                          className="text-gray-500 hover:text-[#FF3B30] transition-colors p-1.5 rounded-md hover:bg-[#FF3B30]/10"
-                          title="Remove position"
-                        >
-                          <TrashIcon className="h-5 w-5" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                    No positions added yet. Use the menu above to add assets.
-                  </td>
+          <div className="overflow-x-auto hidden md:block">
+            <table className="min-w-[1200px] w-full">
+              <thead>
+                <tr className="bg-[#2C2C2E] text-[11px] uppercase tracking-wider text-gray-400">
+                  {columnOrder.map((column) => (
+                    <th
+                      key={column}
+                      draggable
+                      onDragStart={() => onHeaderDragStart(column)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => onHeaderDrop(column)}
+                      onDragEnd={() => setDraggedColumn(null)}
+                      className={`px-4 py-3 font-semibold ${column === 'symbol' ? 'text-left' : 'text-right'} ${draggedColumn === column ? 'opacity-40' : ''}`}
+                      title="Drag to reorder columns"
+                    >
+                      <button onClick={() => handleSort(column as SortKey)} className="inline-flex items-center gap-1 hover:text-white transition-colors">
+                        {getColumnLabel(column)} <span>{sortIndicator(column as SortKey)}</span>
+                      </button>
+                    </th>
+                  ))}
+                  <th className="px-4 py-3 text-center font-semibold w-16"></th>
                 </tr>
-              )}
-            </tbody>
-            {displayHoldings.length > 0 && (
-              <tfoot className="bg-[#1C1C1E] border-t border-gray-800">
-                <tr>
-                  <td colSpan={3} className="px-6 py-5 text-right font-medium text-gray-400">
-                    Total Stack
-                  </td>
-                  <td className="px-6 py-5 text-right font-mono font-semibold text-xl text-white">
-                    {denomination === 'Sats'
-                      ? `${(totalValue * 100000000).toLocaleString(undefined, { maximumFractionDigits: 0 })} Sats`
-                      : `₿${formatBitcoin(totalValue)}`
-                    }
-                  </td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-800">
+                {displayHoldings.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="px-6 py-10 text-center text-gray-500">
+                      No positions yet. Add a symbol above to begin.
+                    </td>
+                  </tr>
+                ) : (
+                  sortedPortfolioRows.map((h) => {
+                    return (
+                      <tr key={h.ticker} className="hover:bg-[#2C2C2E]/40 transition-colors">
+                        {columnOrder.map((column) => {
+                          switch (column) {
+                            case 'symbol':
+                              return (
+                                <td key={column} className="px-4 py-3">
+                                  <div className="font-semibold text-white">{h.ticker}</div>
+                                  <div className="text-xs text-gray-500">{TICKER_NAMES[h.ticker as keyof typeof TICKER_NAMES] || h.ticker}</div>
+                                </td>
+                              );
+                            case 'lastPrice':
+                              return (
+                                <td key={column} className="px-4 py-3 text-right font-mono text-gray-200">
+                                  {h.isLoadingPrice ? <span className="text-xs text-gray-500">Loading...</span> : formatUSD(h.currentPriceUSD)}
+                                </td>
+                              );
+                            case 'currentValue':
+                              return <td key={column} className="px-4 py-3 text-right font-mono text-white">{formatUSD(h.currentValue)}</td>;
+                            case 'accountPct':
+                              return <td key={column} className="px-4 py-3 text-right font-mono text-gray-300">{h.accountPct.toFixed(2)}%</td>;
+                            case 'quantity':
+                              return (
+                                <td key={column} className="px-4 py-3 text-right">
+                                  <input
+                                    type="number"
+                                    step="any"
+                                    min="0"
+                                    value={h.shares || ''}
+                                    onChange={(e) => updateShares(h.ticker, parseFloat(e.target.value) || 0)}
+                                    className="w-24 text-right bg-[#2C2C2E] border border-gray-700 rounded-md px-2 py-1.5 focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] focus:outline-none text-white"
+                                  />
+                                </td>
+                              );
+                            case 'avgCost':
+                              return (
+                                <td key={column} className="px-4 py-3 text-right">
+                                  <input
+                                    type="number"
+                                    step="any"
+                                    min="0"
+                                    value={h.pricePerShare || ''}
+                                    onChange={(e) => updateAvgCost(h.ticker, parseFloat(e.target.value) || 0)}
+                                    className="w-28 text-right bg-[#2C2C2E] border border-gray-700 rounded-md px-2 py-1.5 focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] focus:outline-none text-white"
+                                  />
+                                </td>
+                              );
+                            case 'costBasisTotal':
+                              return <td key={column} className="px-4 py-3 text-right font-mono text-gray-200">{formatUSD(h.costBasisTotal)}</td>;
+                            case 'gainLoss':
+                              return (
+                                <td key={column} className={`px-4 py-3 text-right font-mono ${h.gainLoss >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                  {h.gainLoss >= 0 ? '+' : '-'}{formatUSD(Math.abs(h.gainLoss))}
+                                </td>
+                              );
+                            case 'gainLossPct':
+                              return (
+                                <td key={column} className={`px-4 py-3 text-right font-mono ${h.gainLossPct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                  {formatPercent(h.gainLossPct)}
+                                </td>
+                              );
+                            default:
+                              return null;
+                          }
+                        })}
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => removeHolding(h.ticker)}
+                            className="text-gray-500 hover:text-[#FF3B30] transition-colors p-1.5 rounded-md hover:bg-[#FF3B30]/10"
+                            title="Remove position"
+                          >
+                            <TrashIcon className="h-5 w-5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
 
-          {/* Mobile Card View */}
-          <div className="md:hidden space-y-4 p-4">
-            {displayHoldings.length > 0 ? (
-              displayHoldings.map((h) => {
-                const usdPositionValue = h.pricePerShare * h.shares;
-                const btcPositionValue = usdToBtc(usdPositionValue);
-                const btcPricePerShare = usdToBtc(h.pricePerShare);
-
+          <div className="md:hidden space-y-3 p-3">
+            {displayHoldings.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                No positions yet. Add a symbol above to begin.
+              </div>
+            ) : (
+              sortedPortfolioRows.map((h) => {
                 return (
-                  <div key={h.ticker} className="bg-[#1C1C1E] rounded-xl p-5 border border-gray-800 shadow-sm">
-                    <div className="flex justify-between items-start mb-5">
+                  <div key={h.ticker} className="bg-[#202126] border border-gray-800 rounded-xl p-4">
+                    <div className="flex justify-between items-start mb-3">
                       <div>
-                        <div className="font-semibold text-lg text-white">
-                          {(TICKER_NAMES as Record<string, string>)[h.ticker] || h.ticker}
-                        </div>
-                        <div className="text-sm text-gray-500 font-medium">{h.ticker}</div>
+                        <div className="font-semibold text-white">{h.ticker}</div>
+                        <div className="text-xs text-gray-500">{TICKER_NAMES[h.ticker as keyof typeof TICKER_NAMES] || h.ticker}</div>
                       </div>
-                      <button
-                        onClick={() => removeHolding(h.ticker)}
-                        className="text-gray-500 hover:text-[#FF3B30] p-2 -mr-2 rounded-md hover:bg-[#FF3B30]/10 transition-colors"
-                      >
+                      <button onClick={() => removeHolding(h.ticker)} className="text-gray-500 hover:text-[#FF3B30]">
                         <TrashIcon className="h-5 w-5" />
                       </button>
                     </div>
-
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <label className="text-sm font-medium text-gray-400">Quantity</label>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <div className="text-gray-500 text-xs">Last Price</div>
+                        <div className="text-white">{h.isLoadingPrice ? 'Loading...' : formatUSD(h.currentPriceUSD)}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-500 text-xs">Current Value</div>
+                        <div className="text-white">{formatUSD(h.currentValue)}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-500 text-xs">Quantity</div>
                         <input
                           type="number"
                           step="any"
                           min="0"
                           value={h.shares || ''}
                           onChange={(e) => updateShares(h.ticker, parseFloat(e.target.value) || 0)}
-                          placeholder="0"
-                          className="w-32 text-right bg-[#2C2C2E] border border-gray-700 rounded-md px-3 py-2 focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] focus:outline-none text-white appearance-none"
+                          className="w-full mt-1 bg-[#2C2C2E] border border-gray-700 rounded-md px-2 py-1.5 text-white"
                         />
                       </div>
-
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-gray-400">Price ({denomination === 'Sats' ? 'Sats' : '₿'})</span>
-                        <span className="font-mono text-gray-300">
-                          {h.isLoadingPrice ? (
-                            <span className="text-gray-500 text-xs font-sans">Loading...</span>
-                          ) : btcPricePerShare > 0 ? (
-                            <span>
-                              {denomination === 'Sats'
-                                ? `${(btcPricePerShare * 100000000).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                                : `₿${formatBitcoin(btcPricePerShare)}`
-                              }
-                            </span>
-                          ) : (
-                            <span className="text-yellow-500 text-xs font-sans">N/A</span>
-                          )}
-                        </span>
+                      <div>
+                        <div className="text-gray-500 text-xs">Avg Cost Basis</div>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={h.pricePerShare || ''}
+                          onChange={(e) => updateAvgCost(h.ticker, parseFloat(e.target.value) || 0)}
+                          className="w-full mt-1 bg-[#2C2C2E] border border-gray-700 rounded-md px-2 py-1.5 text-white"
+                        />
                       </div>
-
-                      <div className="flex justify-between items-center pt-3 border-t border-gray-800 mt-2">
-                        <span className="text-sm font-medium text-gray-400">Value</span>
-                        <span className="font-mono font-semibold text-lg text-white">
-                          {denomination === 'Sats'
-                            ? `${(btcPositionValue * 100000000).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                            : `₿${formatBitcoin(btcPositionValue)}`
-                          }
-                        </span>
+                      <div>
+                        <div className="text-gray-500 text-xs">Cost Basis Total</div>
+                        <div className="text-white">{formatUSD(h.costBasisTotal)}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-500 text-xs">Total Gain/Loss</div>
+                        <div className={h.gainLoss >= 0 ? 'text-green-400' : 'text-red-400'}>
+                          {h.gainLoss >= 0 ? '+' : '-'}{formatUSD(Math.abs(h.gainLoss))} ({formatPercent(h.gainLossPct)})
+                        </div>
                       </div>
                     </div>
                   </div>
                 );
               })
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                No positions added yet. Use the menu above to add assets.
-              </div>
             )}
+          </div>
 
-            {/* Mobile Total Footer */}
-            {displayHoldings.length > 0 && (
-              <div className="mt-6 pt-4 border-t border-gray-800">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-gray-400">Total Stack</span>
-                  <span className="font-mono font-semibold text-2xl text-white">
-                    {denomination === 'Sats'
-                      ? `${(totalValue * 100000000).toLocaleString(undefined, { maximumFractionDigits: 0 })} Sats`
-                      : `₿${formatBitcoin(totalValue)}`
-                    }
-                  </span>
-                </div>
+          <div className="px-4 py-4 border-t border-gray-800 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+            <div className="text-sm text-gray-400">
+              {denomination === 'Sats'
+                ? `Total Stack: ${(totalValue * 100000000).toLocaleString(undefined, { maximumFractionDigits: 0 })} sats`
+                : `Total Stack: ₿${formatBitcoin(totalValue)}`
+              }
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={loadPortfolio}
+                className="px-4 py-2 bg-[#2C2C2E] text-white font-medium rounded-lg hover:bg-[#3A3A3C] transition-colors border border-gray-700"
+              >
+                Reload
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="px-4 py-2 bg-[#0A84FF] text-white font-semibold rounded-lg hover:bg-[#0066CC] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+              >
+                {isSaving ? <LoadingSpinner size="sm" /> : 'Save Portfolio'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-[#1C1C1E] border border-gray-800 rounded-xl shadow-premium mt-6">
+          <div className="p-4 border-b border-gray-800">
+            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Transactions (For Performance History)</h2>
+          </div>
+          <div className="p-4 grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+            <div className="md:col-span-3">
+              <label className="block text-xs text-gray-500 mb-1">Ticker</label>
+              <select
+                value={txTicker}
+                onChange={(e) => setTxTicker(e.target.value)}
+                className="w-full bg-[#2C2C2E] text-white border border-gray-700 rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF]"
+              >
+                {SUPPORTED_TICKERS.map((ticker) => (
+                  <option key={ticker} value={ticker}>{ticker}</option>
+                ))}
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs text-gray-500 mb-1">Type</label>
+              <select
+                value={txType}
+                onChange={(e) => setTxType(e.target.value as 'BUY' | 'SELL')}
+                className="w-full bg-[#2C2C2E] text-white border border-gray-700 rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF]"
+              >
+                <option value="BUY">Buy</option>
+                <option value="SELL">Sell</option>
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs text-gray-500 mb-1">Quantity</label>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={txQuantity}
+                onChange={(e) => setTxQuantity(e.target.value)}
+                className="w-full bg-[#2C2C2E] text-white border border-gray-700 rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF]"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs text-gray-500 mb-1">Price ($)</label>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={txPriceUSD}
+                onChange={(e) => setTxPriceUSD(e.target.value)}
+                className="w-full bg-[#2C2C2E] text-white border border-gray-700 rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF]"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs text-gray-500 mb-1">Date</label>
+              <input
+                type="date"
+                value={txDate}
+                onChange={(e) => setTxDate(e.target.value)}
+                className="w-full bg-[#2C2C2E] text-white border border-gray-700 rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF]"
+              />
+            </div>
+            <div className="md:col-span-1">
+              <button
+                onClick={addTransaction}
+                className="w-full px-3 py-2.5 bg-[#0A84FF] text-white font-semibold rounded-lg hover:bg-[#0066CC] transition-colors"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+
+          <div className="px-4 pb-4">
+            {transactions.length === 0 ? (
+              <p className="text-xs text-gray-500">No transactions yet. Add buys/sells so Dashboard can compute true stack performance over time.</p>
+            ) : (
+              <div className="max-h-44 overflow-y-auto border border-gray-800 rounded-lg">
+                <table className="w-full text-sm">
+                  <thead className="bg-[#202126] text-gray-400 text-xs uppercase tracking-wider">
+                    <tr>
+                      <th className="px-3 py-2 text-left">Date</th>
+                      <th className="px-3 py-2 text-left">Type</th>
+                      <th className="px-3 py-2 text-left">Ticker</th>
+                      <th className="px-3 py-2 text-right">Qty</th>
+                      <th className="px-3 py-2 text-right">Price</th>
+                      <th className="px-3 py-2 text-center w-10"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {transactions.map((tx) => (
+                      <tr key={tx.id} className="border-t border-gray-800">
+                        <td className="px-3 py-2 text-gray-300">{new Date(tx.timestamp).toLocaleDateString()}</td>
+                        <td className={`px-3 py-2 font-semibold ${tx.type === 'BUY' ? 'text-green-400' : 'text-red-400'}`}>{tx.type}</td>
+                        <td className="px-3 py-2 text-white">{tx.ticker}</td>
+                        <td className="px-3 py-2 text-right font-mono text-gray-300">{tx.quantity}</td>
+                        <td className="px-3 py-2 text-right font-mono text-gray-300">{formatUSD(tx.priceUSD)}</td>
+                        <td className="px-3 py-2 text-center">
+                          <button onClick={() => removeTransaction(tx.id)} className="text-gray-500 hover:text-[#FF3B30]">×</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
+          </div>
+        </div>
+
+        <div className="bg-[#1C1C1E] border border-gray-800 rounded-xl shadow-premium mt-6">
+          <div className="p-4 border-b border-gray-800">
+            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Add Position</h2>
+          </div>
+          <div className="p-4 grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+            <div className="md:col-span-10">
+              <label className="block text-xs text-gray-500 mb-2">Assets</label>
+              {availableTickers.length === 0 ? (
+                <div className="text-sm text-gray-400 bg-[#2C2C2E] border border-gray-700 rounded-lg px-3 py-2.5">
+                  All supported assets are already in your portfolio.
+                </div>
+              ) : (
+                <div className="bg-[#17181D] border border-gray-700 rounded-lg px-3 py-3 max-h-40 overflow-y-auto">
+                  <div className="flex flex-wrap gap-x-5 gap-y-2">
+                    {availableTickers.map((ticker) => (
+                      <label key={ticker} className="inline-flex items-center gap-2 cursor-pointer text-sm text-gray-300">
+                        <input
+                          type="checkbox"
+                          checked={selectedAssetsToAdd.includes(ticker)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedAssetsToAdd((prev) => [...prev, ticker]);
+                            } else {
+                              setSelectedAssetsToAdd((prev) => prev.filter((t) => t !== ticker));
+                            }
+                          }}
+                          className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-[#0A84FF] focus:ring-[#0A84FF] focus:ring-offset-0"
+                        />
+                        <span>
+                          <span className="font-semibold text-white">{ticker}</span>
+                          <span className="text-gray-500"> - {TICKER_NAMES[ticker as keyof typeof TICKER_NAMES] || ticker}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="md:col-span-2 flex gap-2">
+              <button
+                onClick={addSelectedHoldings}
+                disabled={selectedAssetsToAdd.length === 0}
+                className="flex-1 px-4 py-2.5 bg-[#0A84FF] text-white font-semibold rounded-lg hover:bg-[#0066CC] disabled:opacity-50 transition-colors"
+              >
+                Add Selected
+              </button>
+            </div>
           </div>
         </div>
 

@@ -5,9 +5,6 @@ import type { Schema } from '../../amplify/data/resource';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useDenomination } from '../contexts/DenominationContext';
 
-import { triggerFetchHistoricalPrices } from '../services/historicalPriceService';
-import { SUPPORTED_TICKERS } from '../constants/tickers';
-
 const client = generateClient<Schema>();
 
 type NotificationFreq = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'off';
@@ -19,7 +16,6 @@ function Settings() {
   const [lastName, setLastName] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -97,20 +93,6 @@ function Settings() {
       setMessage({ type: 'error', text: 'Failed to save settings. Please try again.' });
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleRefreshData = async () => {
-    setIsRefreshing(true);
-    setMessage(null);
-    try {
-      await triggerFetchHistoricalPrices([...SUPPORTED_TICKERS], 90);
-      setMessage({ type: 'success', text: 'Data refresh triggered successfully! Please wait a few minutes for data to populate.' });
-    } catch (error) {
-      console.error('Error refreshing data:', error);
-      setMessage({ type: 'error', text: `Failed to trigger data refresh: ${(error as any).message || JSON.stringify(error)}` });
-    } finally {
-      setIsRefreshing(false);
     }
   };
 
@@ -202,20 +184,6 @@ function Settings() {
             >
             </input>
             <p className="text-xs text-gray-400 mt-1">Enter your phone number for SMS notifications (format: +1234567890). SMS requires AWS SNS to be configured.</p>
-          </div>
-
-          <div className="pt-4 border-t border-gray-800">
-            <h3 className="text-lg font-medium mb-3 text-white">Data Management</h3>
-            <p className="text-sm text-gray-400 mb-3">
-              Manually trigger a refresh of historical price data from the backend. Use this if charts are empty.
-            </p>
-            <button
-              onClick={handleRefreshData}
-              disabled={isRefreshing}
-              className="w-full py-2.5 bg-[#2C2C2E] border border-gray-700 text-white font-medium rounded-lg hover:bg-[#3A3A3C] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {isRefreshing ? <LoadingSpinner size="sm" /> : 'Refresh Historical Data'}
-            </button>
           </div>
 
           <button

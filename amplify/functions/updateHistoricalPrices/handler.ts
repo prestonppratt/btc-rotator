@@ -117,7 +117,7 @@ export const handler: Handler = async (event, context) => {
 
   // All supported tickers
   const tickers = [
-    'BTC-USD', 'MSTR', 'SMLR', 'ASST', 'FBTC', 'MARA', 'RIOT', 'COIN',
+    'BTC-USD', 'MSTR', 'ASST', 'FBTC', 'MARA', 'RIOT', 'COIN',
     'HUT', 'CLSK', 'BITF', 'WULF', 'CORZ', 'IREN', 'CIFR', 'BTBT'
   ];
 
@@ -172,4 +172,3 @@ export const handler: Handler = async (event, context) => {
     };
   }
 };
-

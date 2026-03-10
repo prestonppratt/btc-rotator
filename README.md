@@ -424,6 +424,64 @@ The following tickers are hardcoded throughout the application:
 - Review CloudWatch logs for errors
 - Ensure AppSync permissions are correct
 
+## 📈 Model Selection & Recommendations
+
+The Dashboard now includes a **Model Selection & Trade Recommendation** panel to compare model backtests versus your actual portfolio performance baseline.
+Recommendation snapshots are viewable on the dedicated **History** page (`/recommendations`).
+
+### Supported models
+- Relative Momentum
+- Time-Series Momentum
+- Dual Momentum
+- Volatility-Adjusted Momentum
+- Mean Reversion
+- Ensemble
+
+### Trade timing assumptions
+- Signals are computed using available bar `t`.
+- Execution is applied with a **1-bar delay** (`t+1`) to avoid lookahead bias.
+- Rebalance cadence is deterministic (`daily`, `weekly`, `monthly`).
+- Execution mode is explicitly set (`next_close` or `next_open` assumption metadata).
+
+### Comparison normalization assumptions
+- Actual and model curves are normalized to a common starting value (`10,000`) for visual comparability.
+- Model ranking is based on **realized total return** over the selected window.
+- This ranks by observed return; it does **not** guarantee future maximum return.
+
+### Trade recommendation assumptions
+- Current portfolio value is computed from current holdings and latest prices.
+- Target dollar allocation = `target weight * current portfolio value`.
+- Delta dollars are converted to quantities with configurable rounding:
+  - `auto`: whole shares for equities, fractional for BTC
+  - `whole`: whole units
+  - `fractional`: fractional units
+- Minimum trade threshold suppresses small trades.
+- Transaction costs and slippage are modeled as configurable basis points.
+
+### Persistence
+- Save/load model selections via `ModelSelectionConfig`.
+- Save latest recommendation snapshots via `RecommendationSnapshot`.
+
+### Tests
+Run:
+```bash
+npm test
+```
+Included test coverage targets:
+- model ranking logic
+- normalization math
+- recommendation quantity/rounding threshold behavior
+- API payload contract shapes
+- deployed AppSync integration contracts (env-gated)
+- frontend chart/results-table data shaping utilities
+
+### Deployed integration tests
+To run live AppSync integration tests against deployed Amplify resources, provide:
+- `APPSYNC_URL`
+- `APPSYNC_JWT`
+
+If these are not provided, integration tests are skipped automatically.
+
 ## 📝 License
 
 Entertainment purposes only. Not financial advice.

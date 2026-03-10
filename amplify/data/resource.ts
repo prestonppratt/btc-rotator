@@ -1,6 +1,7 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 import { rotator } from '../functions/rotator/resource';
 import { fetchHistoricalPrices } from '../functions/fetchHistoricalPrices/resource';
+import { modelEngine } from '../functions/modelEngine/resource';
 // import { getHistoricalPrices } from '../functions/getHistoricalPrices/resource';
 
 const schema = a.schema({
@@ -67,11 +68,8 @@ const schema = a.schema({
     .returns(a.string())
     .handler(a.handler.function(fetchHistoricalPrices))
     .authorization((allow) => [
-      allow.guest(),
-      allow.authenticated('identityPool'), // Enable IAM for authenticated users
-      allow.authenticated(), // Keep User Pool for other things
-      allow.publicApiKey()
-    ]), // Allow all access types to fix auth error
+      allow.authenticated(),
+    ]),
 
   // Note: We'll use listHistoricalPrices with filters instead of a custom query
   // The composite key (ticker, timestamp) allows efficient queries
@@ -82,6 +80,51 @@ const schema = a.schema({
       value: a.string(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
+
+  ModelSelectionConfig: a
+    .model({
+      name: a.string().required(),
+      config: a.json().required(),
+      isDefault: a.boolean(),
+      lastRunAt: a.datetime(),
+    })
+    .authorization((allow) => [allow.owner()]),
+
+  RecommendationSnapshot: a
+    .model({
+      modelName: a.string().required(),
+      config: a.json(),
+      snapshot: a.json().required(),
+      signalDate: a.string(),
+      generatedAt: a.datetime().required(),
+    })
+    .authorization((allow) => [allow.owner()]),
+
+  listModels: a
+    .query()
+    .returns(a.string().array().required())
+    .handler(a.handler.function(modelEngine))
+    .authorization((allow) => [allow.authenticated()]),
+
+  runModelComparison: a
+    .query()
+    .arguments({
+      config: a.json(),
+    })
+    .returns(a.string().required())
+    .handler(a.handler.function(modelEngine))
+    .authorization((allow) => [allow.authenticated()]),
+
+  getTradeRecommendations: a
+    .query()
+    .arguments({
+      model: a.string(),
+      config: a.json(),
+      currentHoldings: a.json(),
+    })
+    .returns(a.string().required())
+    .handler(a.handler.function(modelEngine))
+    .authorization((allow) => [allow.authenticated()]),
 });
 
 export type Schema = ClientSchema<typeof schema>;
@@ -96,4 +139,3 @@ export const data = defineData({
   },
 });
 // Force rebuild 4
-
