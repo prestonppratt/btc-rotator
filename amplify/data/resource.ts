@@ -30,7 +30,7 @@ const schema = a.schema({
       btcPriceUSD: a.float().required(),
     })
     .identifier(['ticker', 'timestamp'])
-    .authorization((allow) => [allow.guest(), allow.authenticated(), allow.publicApiKey()]),
+    .authorization((allow) => [allow.guest(), allow.authenticated()]),
   /* Force update 5 */
 
   getRotationSignal: a
@@ -79,7 +79,7 @@ const schema = a.schema({
       key: a.id().required(),
       value: a.string(),
     })
-    .authorization((allow) => [allow.publicApiKey()]),
+    .authorization((allow) => [allow.authenticated()]),
 
   ModelSelectionConfig: a
     .model({
@@ -133,9 +133,6 @@ export const data = defineData({
   schema,
   authorizationModes: {
     defaultAuthorizationMode: 'userPool',
-    apiKeyAuthorizationMode: {
-      expiresInDays: 30,
-    },
   },
 });
 // Force rebuild 4
