@@ -14,6 +14,16 @@ A full-stack serverless web application for automated Bitcoin ticker rotation st
 ## 📦 Project Structure
 
 ```
+
+## ⏱️ Automatic Historical Backfill
+
+- Hourly automation is enabled via EventBridge and invokes `fetchHistoricalPrices` in `autoBackfill` mode.
+- Each hourly run executes a small fixed budget (`2` ticker-window tasks) to stay inside free API limits.
+- The backfill cursor is persisted in the `System` table (`autoBackfillStateV1`), so progress continues across runs.
+- Window strategy:
+  - Hourly densification windows: `7, 14, 30, 60, 90` days
+  - Daily depth windows: `120, 180, 270, 365` days
+- Practical free-API constraint: hourly bars are only reliably available for recent windows; data older than ~90 days is fetched at daily resolution.
 btc-rotator/
 ├── amplify/
 │   ├── auth/resource.ts          # Cognito authentication

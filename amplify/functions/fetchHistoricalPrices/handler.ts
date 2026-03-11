@@ -1,11 +1,20 @@
 import type { Handler } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand, BatchWriteCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, BatchWriteCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda';
 
 // Force rebuild - added createdAt/updatedAt fields
 
 const dynamoClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+
+const DEFAULT_TICKERS = [
+  'BTC-USD', 'MSTR', 'ASST', 'FBTC', 'MARA', 'RIOT', 'COIN',
+  'HUT', 'CLSK', 'BITF', 'WULF', 'CORZ', 'IREN', 'CIFR', 'BTBT',
+];
+const HOURLY_WINDOWS = [7, 14, 30, 60, 90];
+const DAILY_WINDOWS = [120, 180, 270, 365];
+const AUTO_STATE_KEY = 'autoBackfillStateV1';
+const AUTO_TASKS_PER_RUN = 2;
 
 interface HistoricalPrice {
   ticker: string;
@@ -13,6 +22,11 @@ interface HistoricalPrice {
   priceUSD: number;
   priceBTC: number;
   btcPriceUSD: number;
+}
+
+interface AutoBackfillState {
+  comboCursor: number;
+  updatedAt: string;
 }
 
 // Helper delay function
@@ -178,20 +192,73 @@ const storePrices = async (prices: HistoricalPrice[]): Promise<void> => {
 const BATCH_SIZE = 4; // number of tickers per Lambda invocation
 const BATCH_DELAY_MS = 1000; // 1 second between batches to prevent timeout
 
-/**
- * Core Lambda handler. Supports self‑invocation to pace API calls over many hours.
- * The event may contain `remainingTickers` – an array of tickers that still need processing.
- */
-export const handler: Handler = async (event, _context) => {
-  console.log('fetchHistoricalPrices invoked', JSON.stringify(event));
+const getSystemTableName = (): string | undefined =>
+  process.env.AMPLIFY_DATA_TABLE_NAME_SYSTEM;
 
-  const args = event.arguments || {};
-  const allTickers = args.tickers || [
-    'BTC-USD', 'MSTR', 'ASST', 'FBTC', 'MARA', 'RIOT', 'COIN',
-    'HUT', 'CLSK', 'BITF', 'WULF', 'CORZ', 'IREN', 'CIFR', 'BTBT',
-  ];
-  const days = args.days || 365;
-  const remaining: string[] = args.remainingTickers || allTickers;
+const loadAutoBackfillState = async (): Promise<AutoBackfillState> => {
+  const systemTable = getSystemTableName();
+  if (!systemTable) {
+    return { comboCursor: 0, updatedAt: new Date().toISOString() };
+  }
+
+  try {
+    const res = await dynamoClient.send(
+      new GetCommand({
+        TableName: systemTable,
+        Key: { key: AUTO_STATE_KEY },
+      })
+    );
+    const raw = res.Item?.value;
+    if (!raw || typeof raw !== 'string') {
+      return { comboCursor: 0, updatedAt: new Date().toISOString() };
+    }
+    const parsed = JSON.parse(raw) as Partial<AutoBackfillState>;
+    return {
+      comboCursor: Number.isFinite(parsed.comboCursor) ? Number(parsed.comboCursor) : 0,
+      updatedAt: parsed.updatedAt || new Date().toISOString(),
+    };
+  } catch (error) {
+    console.warn('Failed loading auto backfill state, starting from cursor 0.', error);
+    return { comboCursor: 0, updatedAt: new Date().toISOString() };
+  }
+};
+
+const saveAutoBackfillState = async (state: AutoBackfillState): Promise<void> => {
+  const systemTable = getSystemTableName();
+  if (!systemTable) return;
+  await dynamoClient.send(
+    new PutCommand({
+      TableName: systemTable,
+      Item: {
+        key: AUTO_STATE_KEY,
+        value: JSON.stringify(state),
+      },
+    })
+  );
+};
+
+const parseIncomingArgs = (event: any): Record<string, any> => {
+  if (event?.arguments && typeof event.arguments === 'object') {
+    return event.arguments;
+  }
+  if (event && typeof event === 'object') {
+    return event;
+  }
+  return {};
+};
+
+const processTickersBatch = async ({
+  allTickers,
+  days,
+  remainingTickers,
+  disableChaining = false,
+}: {
+  allTickers: string[];
+  days: number;
+  remainingTickers?: string[];
+  disableChaining?: boolean;
+}): Promise<string> => {
+  const remaining = remainingTickers || allTickers;
 
   // Security: Cap the number of tickers to prevent abuse/timeout
   const MAX_TICKERS = 50;
@@ -269,7 +336,7 @@ export const handler: Handler = async (event, _context) => {
   }
 
   // Schedule next batch if needed
-  if (nextBatch.length > 0) {
+  if (!disableChaining && nextBatch.length > 0) {
     console.log(`Scheduling next batch of ${nextBatch.length} tickers after delay`);
     // Wait before invoking – this keeps the current Lambda within its timeout (keep delay short)
     await sleep(BATCH_DELAY_MS);
@@ -288,9 +355,69 @@ export const handler: Handler = async (event, _context) => {
     });
     await lambdaClient.send(cmd);
     console.log('Invoked next batch');
-  } else {
+  } else if (nextBatch.length === 0) {
     console.log('All tickers processed – work complete');
   }
 
   return `Batch processed: ${currentBatch.join(', ')}`;
+};
+
+const runAutoBackfill = async (tickers: string[]): Promise<string> => {
+  const windows = [...HOURLY_WINDOWS, ...DAILY_WINDOWS];
+  const combos = tickers.length * windows.length;
+  if (combos === 0) return 'No tickers configured for auto-backfill.';
+
+  const state = await loadAutoBackfillState();
+  let cursor = Math.max(0, Math.floor(state.comboCursor));
+  const plans: string[] = [];
+
+  for (let i = 0; i < AUTO_TASKS_PER_RUN; i += 1) {
+    const comboIndex = cursor % combos;
+    const windowIndex = Math.floor(comboIndex / tickers.length);
+    const tickerIndex = comboIndex % tickers.length;
+    const ticker = tickers[tickerIndex];
+    const days = windows[windowIndex];
+    const interval = days <= 90 ? 'hourly' : 'daily';
+
+    await processTickersBatch({
+      allTickers: [ticker],
+      days,
+      remainingTickers: [ticker],
+      disableChaining: true,
+    });
+
+    plans.push(`${ticker}:${days}d(${interval})`);
+    cursor += 1;
+  }
+
+  await saveAutoBackfillState({
+    comboCursor: cursor % combos,
+    updatedAt: new Date().toISOString(),
+  });
+
+  return `Auto backfill complete (${AUTO_TASKS_PER_RUN} tasks): ${plans.join(', ')}`;
+};
+
+/**
+ * Core Lambda handler. Supports self‑invocation to pace API calls over many hours.
+ * The event may contain `remainingTickers` – an array of tickers that still need processing.
+ */
+export const handler: Handler = async (event, _context) => {
+  console.log('fetchHistoricalPrices invoked', JSON.stringify(event));
+
+  const args = parseIncomingArgs(event);
+  const allTickers = Array.isArray(args.tickers) && args.tickers.length > 0 ? args.tickers : DEFAULT_TICKERS;
+  const days = Number(args.days || 365);
+  const remaining: string[] = Array.isArray(args.remainingTickers) ? args.remainingTickers : allTickers;
+
+  if (args.autoBackfill === true) {
+    return runAutoBackfill(allTickers);
+  }
+
+  return processTickersBatch({
+    allTickers,
+    days,
+    remainingTickers: remaining,
+    disableChaining: Boolean(args.disableChaining),
+  });
 };

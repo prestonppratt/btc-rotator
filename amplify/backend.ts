@@ -7,9 +7,10 @@ import { fetchHistoricalPrices } from './functions/fetchHistoricalPrices/resourc
 import { updateHistoricalPrices } from './functions/updateHistoricalPrices/resource';
 import { modelEngine } from './functions/modelEngine/resource';
 import { PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
-import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
+import { Rule, Schedule, RuleTargetInput } from 'aws-cdk-lib/aws-events';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import { Function } from 'aws-cdk-lib/aws-lambda';
+import { Duration } from 'aws-cdk-lib';
 
 // Backend with auth, data, and passwordless email OTP authentication
 const backend = defineBackend({
@@ -27,6 +28,7 @@ const backend = defineBackend({
 // Note: This can also be set up via AWS Console > EventBridge > Rules
 try {
   const updateLambda = backend.updateHistoricalPrices.resources.lambda;
+  const fetchLambda = backend.fetchHistoricalPrices.resources.lambda;
 
   // Create EventBridge rule to trigger daily at midnight UTC
   const dailyUpdateRule = new Rule(backend.stack, 'DailyPriceUpdateRule', {
@@ -35,6 +37,20 @@ try {
   });
 
   dailyUpdateRule.addTarget(new LambdaFunction(updateLambda));
+
+  // Hourly budgeted backfill to gradually densify historical data.
+  const hourlyBackfillRule = new Rule(backend.stack, 'HourlyBackfillRule', {
+    schedule: Schedule.rate(Duration.hours(1)),
+    description: 'Hourly budgeted historical backfill for portfolio tickers',
+  });
+
+  hourlyBackfillRule.addTarget(
+    new LambdaFunction(fetchLambda, {
+      event: RuleTargetInput.fromObject({
+        autoBackfill: true,
+      }),
+    })
+  );
 } catch (error) {
   // In sandbox, scheduling may need to be set up manually
   console.warn('Could not set up scheduled price updates:', error);
@@ -62,6 +78,7 @@ try {
   const fetchLambda = backend.fetchHistoricalPrices.resources.lambda;
   // const getLambda = backend.getHistoricalPrices.resources.lambda; // Added
   const table = backend.data.resources.tables['HistoricalPrice'];
+  const systemTable = backend.data.resources.tables['System'];
 
   if (table) {
     // Debugging: Grant broad permissions to verify IAM update (Removed)
@@ -83,6 +100,11 @@ try {
         resources: ['*'], // Use wildcard to avoid circular dependency with functionArn
       })
     );
+
+    if (systemTable) {
+      (fetchLambda as Function).addEnvironment('AMPLIFY_DATA_TABLE_NAME_SYSTEM', systemTable.tableName);
+      systemTable.grantReadWriteData(fetchLambda);
+    }
 
     // Fix for S3 AccessDenied error during build
     // Grant the Amplify Build Role access to the deployment bucket to read the schema
