@@ -1,5 +1,6 @@
 node_modules
 .next
+.build
 dist
 .venv
 __pycache__
@@ -9,3 +10,4 @@ __pycache__
 .env.local
 data/private/
 data/portfolio_snapshot_*.json
+data/sec-edgar/

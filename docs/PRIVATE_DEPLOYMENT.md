@@ -27,11 +27,12 @@ Point `btcrotator.com` to the AWS Amplify production branch only after Cognito, 
 
 Run the database schema through a managed migration process. Then implement, in order:
 
-1. Daily adjusted price ingestion with raw-response retention.
-2. SEC filing watchlist and filing-document retention.
+1. SEC filing watchlist and filing-document retention. The versioned template at `infra/sec-foundation.yaml` creates a private, encrypted S3 bucket and disabled-by-default weekday collector. Package only the three SEC collector files with `make package-sec-foundation`; do not place the resulting zip in Git.
+2. Configure `SEC_USER_AGENT` with an identifying, monitored contact before enabling the schedule. This is required by the SEC for automated access.
 3. Human-reviewed extraction of BTC holdings, claims, reserves, and diluted shares.
-4. Point-in-time model inputs and versioned backtest artifacts.
-5. Shadow-mode reports before any `REVIEW` or `ACTION` status is possible.
+4. Daily adjusted price ingestion with raw-response retention once a correctly licensed price-data vendor is selected.
+5. Point-in-time model inputs and versioned backtest artifacts.
+6. Shadow-mode reports before any `REVIEW` or `ACTION` status is possible.
 
 ## 5. Legal and operating controls
 

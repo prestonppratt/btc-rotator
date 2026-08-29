@@ -1,0 +1,101 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Private, source-preserving SEC EDGAR foundation for BTC Rotator.
+
+Parameters:
+  ArtifactBucket:
+    Type: String
+    Description: Existing private bucket containing the Lambda zip from this repository.
+  ArtifactKey:
+    Type: String
+    Description: Object key of the Lambda zip from this repository.
+  SecUserAgent:
+    Type: String
+    NoEcho: true
+    Description: Identifying, monitored User-Agent required by SEC automated-access guidance.
+
+Resources:
+  SecDataBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub btc-rotator-sec-${AWS::AccountId}-${AWS::Region}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+
+  SecCollectorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WritePrivateSecSnapshots
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub ${SecDataBucket.Arn}/sec-edgar/*
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  SecCollector:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: btc-rotator-sec-foundation
+      Description: Collects public SEC source data for BTC Rotator.
+      Runtime: python3.12
+      Handler: brae.sec_lambda.lambda_handler
+      Role: !GetAtt SecCollectorRole.Arn
+      Timeout: 120
+      MemorySize: 256
+      Code:
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: !Ref ArtifactKey
+      Environment:
+        Variables:
+          SEC_DATA_BUCKET: !Ref SecDataBucket
+          SEC_USER_AGENT: !Ref SecUserAgent
+
+  WeekdaySecCollection:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Disabled until an approved SEC User-Agent is configured and the first collection is verified.
+      ScheduleExpression: cron(0 14 ? * MON-FRI *)
+      State: DISABLED
+      Targets:
+        - Arn: !GetAtt SecCollector.Arn
+          Id: SecCollector
+
+  PermitEventBridgeInvoke:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref SecCollector
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt WeekdaySecCollection.Arn
+
+Outputs:
+  SecDataBucket:
+    Value: !Ref SecDataBucket
+  SecCollectorFunction:
+    Value: !Ref SecCollector
