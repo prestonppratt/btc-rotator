@@ -26,14 +26,17 @@ class Issuer:
     ticker: str
     name: str
     cik: str
+    asset_type: str
     notes: str
 
 
 # STRC is a Strategy preferred security, so it shares Strategy's issuer filings.
 ISSUERS = (
-    Issuer("MSTR", "Strategy Inc.", "0001050446", "Common stock"),
-    Issuer("STRC", "Strategy Inc.", "0001050446", "Preferred security; same issuer as MSTR"),
-    Issuer("ASST", "Strive, Inc.", "0001920406", "Formerly Asset Entities Inc."),
+    Issuer("MSTR", "Strategy Inc.", "0001050446", "treasury common", "Common stock"),
+    Issuer("STRC", "Strategy Inc.", "0001050446", "treasury preferred", "Preferred security; same issuer as MSTR"),
+    Issuer("ASST", "Strive, Inc.", "0001920406", "treasury common", "Formerly Asset Entities Inc."),
+    Issuer("FBTC", "Fidelity Wise Origin Bitcoin Fund", "0001852317", "spot ETF", "Core holding"),
+    Issuer("IBIT", "iShares Bitcoin Trust ETF", "0001980994", "spot ETF", "Comparison benchmark"),
 )
 
 
@@ -119,6 +122,7 @@ def collect_issuer(client: SecClient, issuer: Issuer) -> dict[str, Any]:
             "ticker": issuer.ticker,
             "name": issuer.name,
             "cik": issuer.cik,
+            "asset_type": issuer.asset_type,
             "notes": issuer.notes,
         },
         "filings": recent_filings(submissions, issuer.cik),
@@ -142,7 +146,13 @@ def collect_foundation(client: SecClient) -> dict[str, Any]:
         result = by_cik[issuer.cik]
         issuers.append(
             {
-                "issuer": {"ticker": issuer.ticker, "name": issuer.name, "cik": issuer.cik, "notes": issuer.notes},
+                "issuer": {
+                    "ticker": issuer.ticker,
+                    "name": issuer.name,
+                    "cik": issuer.cik,
+                    "asset_type": issuer.asset_type,
+                    "notes": issuer.notes,
+                },
                 "filings": result["filings"],
                 "source_urls": result["source_urls"],
             }

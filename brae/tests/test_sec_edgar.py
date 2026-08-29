@@ -65,7 +65,7 @@ def test_collect_and_write_foundation_preserves_raw_responses(tmp_path):
     snapshot = collect_foundation(SecClient("BTC-Rotator/1.0", opener=opener, sleeper=lambda _: None))
     write_foundation(snapshot, tmp_path)
 
-    assert len(calls) == 4  # Two distinct issuers x submissions and facts.
+    assert len(calls) == 8  # Four distinct issuers x submissions and facts.
     assert {issuer["issuer"]["ticker"] for issuer in snapshot["issuers"]} == {issuer.ticker for issuer in ISSUERS}
     assert (tmp_path / "filing-manifest.json").exists()
     assert (tmp_path / "0001050446" / "submissions.json").exists()
