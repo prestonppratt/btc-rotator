@@ -1,4 +1,5 @@
 import { buildResearchStatus } from "@/lib/research-status"
+import { ScenarioPlanner } from "@/components/ScenarioPlanner"
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -29,6 +30,24 @@ export default function Portfolio() {
         </div>
       </section>
 
+      <section className="grid gap-3 md:grid-cols-3">
+        <article className="rounded-xl border border-line bg-panel p-4">
+          <p className="text-xs text-muted">Direct Bitcoin exposure</p>
+          <p className="mt-2 font-mono text-xl">90.4%</p>
+          <p className="mt-2 text-xs leading-5 text-muted">BTC and FBTC make up most of the included portfolio.</p>
+        </article>
+        <article className="rounded-xl border border-line bg-panel p-4">
+          <p className="text-xs text-muted">Company-proxy exposure</p>
+          <p className="mt-2 font-mono text-xl">9.6%</p>
+          <p className="mt-2 text-xs leading-5 text-muted">MSTR, ASST, and STRC add company and financing considerations.</p>
+        </article>
+        <article className="rounded-xl border border-line bg-panel p-4">
+          <p className="text-xs text-muted">Largest position</p>
+          <p className="mt-2 font-mono text-xl">FBTC</p>
+          <p className="mt-2 text-xs leading-5 text-muted">45.2% of the included portfolio at the imported snapshot.</p>
+        </article>
+      </section>
+
       <section className="overflow-hidden rounded-xl border border-line bg-panel">
         <div className="border-b border-line px-4 py-3">
           <h1 className="font-mono text-xs tracking-widest">POSITIONS</h1>
@@ -53,6 +72,8 @@ export default function Portfolio() {
           </table>
         </div>
       </section>
+
+      <ScenarioPlanner positions={research.positions} />
 
       <details className="rounded-xl border border-line bg-panel p-5 text-sm leading-6 text-muted">
         <summary className="cursor-pointer font-mono text-xs tracking-widest text-white">WHY THERE ARE NO TRADE IDEAS YET</summary>

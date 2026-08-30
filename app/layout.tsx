@@ -7,6 +7,7 @@ export const metadata = { title: "BTC Rotator", description: "Private Bitcoin-pr
 function Nav({ hasClerk }: { hasClerk: boolean }){
   const links = [
     ["/","Portfolio"],
+    ["/research","Company research"],
   ] as const
   return (
     <nav className="flex items-center gap-5 text-sm">
